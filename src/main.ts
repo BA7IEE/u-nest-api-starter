@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import type { AppConfig } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -31,6 +32,30 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   app.enableCors({ origin: appCfg.corsOrigin });
+
+  // Swagger 开关:开发/test 默认开启,production 仅在 ENABLE_SWAGGER='true' 时开启。
+  // swaggerEnabled 已在 app.config.ts 计算好(详见 §8 + §14)。
+  //
+  // 路径锚定:文档(ARCHITECTURE.md §6 / CLAUDE.md §4)固定 /api/docs。
+  // @nestjs/swagger 11 默认 setup() 不自动跟全局前缀,必须显式传
+  // useGlobalPrefix: true,让 SwaggerModule 在 setGlobalPrefix('/api') 下
+  // 注册到 /api/docs(及 /api/docs-json、/api/docs-yaml)。
+  //
+  // /api/docs* 由 ResponseInterceptor SKIP_PREFIXES 跳过包装,SwaggerModule
+  // 直接返回原始 HTML / JSON / YAML(实际上 SwaggerModule 走 express
+  // middleware 直接 send,本身也不会被 interceptor 命中,跳过列表是双保险)。
+  if (appCfg.swaggerEnabled) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('U Nest API Starter')
+      .setDescription('AI-friendly TypeScript API base — NestJS + Prisma + PostgreSQL')
+      .setVersion('0.0.1')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document, {
+      useGlobalPrefix: true,
+    });
+  }
 
   await app.listen(appCfg.port);
 }
