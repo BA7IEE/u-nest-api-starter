@@ -158,7 +158,32 @@ pnpm prisma:migrate    # 应用 migration(开发态,会触发 generate)
 pnpm prisma:generate   # 仅重新生成 Prisma Client
 pnpm prisma:seed       # 写入默认 super admin(幂等;已存在时不覆盖)
 pnpm prisma:studio     # 图形化数据库 GUI(http://localhost:5555)
+
+# E2E 测试
+pnpm db:test:init      # 在 Postgres 容器里幂等创建 app_test 测试库(首次跑测试前执行一次)
+pnpm test:e2e          # 跑全部 E2E(自动 load .env.test → migrate deploy → 串行执行)
+pnpm test:e2e:watch    # watch 模式
+pnpm db:test:reset     # 出现脏数据时重置 app_test(护栏:DATABASE_URL 不含 'app_test' 拒绝执行)
 ```
+
+---
+
+## E2E 测试
+
+E2E 跑在独立的 `app_test` 物理库,与开发库 `app` 完全隔离,**不污染开发数据**。配置由 [`.env.test`](./.env.test) 驱动,Jest globalSetup 与 setupFiles 双层加载并强制 `override: true`,防止 shell 中已 export 的 `DATABASE_URL` 误打开发库。
+
+```bash
+# 1. 起 PostgreSQL 容器(若尚未起)
+docker compose up -d
+
+# 2. 首次跑测试前,创建 app_test 库(幂等,已存在则跳过)
+pnpm db:test:init
+
+# 3. 跑 E2E
+pnpm test:e2e
+```
+
+任何破坏性操作(`TRUNCATE`、`prisma migrate deploy`、`prisma migrate reset`)在执行前都会断言 `DATABASE_URL` 包含 `app_test` 子串,不通过立即抛错。详见 [`test/setup/test-db.ts`](./test/setup/test-db.ts)。
 
 ---
 

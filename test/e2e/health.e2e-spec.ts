@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
 
 // 14.1 阶段唯一的 smoke 测试,目的是验证 E2E 测试链路能跑通:
@@ -7,12 +8,16 @@ import { createTestApp } from '../setup/test-app';
 // - supertest 经 app.getHttpServer() 内存 HTTP 工作正常
 // - health 走包装(在 SKIP_PREFIXES 之外),响应外层是 { code, message, data }
 //
+// 14.2 起 beforeAll 内追加 resetDb(app):health 不读 DB,调用它纯粹为打通 truncate 链路,
+// 让任何未来 spec 默认有干净表面。
+//
 // 完整 health / response-format / swagger 等用例集见 14.3。
 describe('GET /api/health (smoke)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     app = await createTestApp();
+    await resetDb(app);
   });
 
   afterAll(async () => {

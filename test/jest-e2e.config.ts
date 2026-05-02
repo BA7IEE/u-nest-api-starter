@@ -25,6 +25,11 @@ const config: Config = {
   // detectOpenHandles 会让 Jest 在所有句柄关闭后才退出,并在卡住时打印泄漏源,
   // 倒逼 spec 在 afterAll 里调用 app.close()(进而触发 PrismaService.onModuleDestroy)。
   detectOpenHandles: true,
+  // globalSetup:整个 run 启动一次,负责 load .env.test → 断言 app_test → 建库 → migrate deploy。
+  // setupFiles:每个 worker 入口跑一次,在 spec 模块加载前再 load 一遍 .env.test
+  // (Jest 30 的 globalSetup 不向 worker 透传 process.env)。
+  globalSetup: '<rootDir>/test/setup/global-setup.ts',
+  setupFiles: ['<rootDir>/test/setup/setup-files.ts'],
 };
 
 export default config;
