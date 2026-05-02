@@ -158,7 +158,46 @@ pnpm prisma:migrate    # 应用 migration(开发态,会触发 generate)
 pnpm prisma:generate   # 仅重新生成 Prisma Client
 pnpm prisma:seed       # 写入默认 super admin(幂等;已存在时不覆盖)
 pnpm prisma:studio     # 图形化数据库 GUI(http://localhost:5555)
+
+# E2E 测试
+pnpm db:test:init      # 在 Postgres 容器里幂等创建 app_test 测试库(首次跑测试前执行一次)
+pnpm test:e2e          # 跑全部 E2E(自动 load .env.test → migrate deploy → 串行执行)
+pnpm test:e2e:watch    # watch 模式
+pnpm db:test:reset     # 出现脏数据时重置 app_test(护栏:DATABASE_URL 不含 'app_test' 拒绝执行)
 ```
+
+---
+
+## E2E 测试
+
+E2E 跑在独立的 `app_test` 物理库,与开发库 `app` 完全隔离,**不污染开发数据**。配置由 [`.env.test`](./.env.test) 驱动,Jest globalSetup 与 setupFiles 双层加载并强制 `override: true`,防止 shell 中已 export 的 `DATABASE_URL` 误打开发库。
+
+当前覆盖 **15 spec / 137 用例**,本机 macOS 双跑 ~14s,串行执行(`--runInBand`),`detectOpenHandles: true` 启用,无连接泄漏。
+
+```bash
+# 1. 起 PostgreSQL 容器(若尚未起)
+docker compose up -d
+
+# 2. 首次跑测试前,创建 app_test 库(幂等,已存在则跳过)
+pnpm db:test:init
+
+# 3. 跑 E2E
+pnpm test:e2e
+```
+
+任何破坏性操作(`TRUNCATE`、`prisma migrate deploy`、`prisma migrate reset`)在执行前都会断言 `DATABASE_URL` 包含 `app_test` 子串,不通过立即抛错。详见 [`test/setup/test-db.ts`](./test/setup/test-db.ts)。
+
+### 覆盖范围一览
+
+| spec 文件 | 覆盖内容 |
+|---|---|
+| [`health`](./test/e2e/health.e2e-spec.ts) | 健康检查响应包装 |
+| [`response-format`](./test/e2e/response-format.e2e-spec.ts) / [`swagger`](./test/e2e/swagger.e2e-spec.ts) / [`bizcode-http-status`](./test/e2e/bizcode-http-status.e2e-spec.ts) | 横切:统一响应格式 / Swagger 跳过包装 / BizCode httpStatus 一致性 |
+| [`auth-login`](./test/e2e/auth-login.e2e-spec.ts) / [`auth-jwt-guard`](./test/e2e/auth-jwt-guard.e2e-spec.ts) | 登录正反路径(含防账号枚举四场景一致性)+ JWT 鉴权失效全部分支 |
+| [`users-me`](./test/e2e/users-me.e2e-spec.ts) | 本人接口 GET /me、PATCH /me(字段白名单 + 长度边界) |
+| [`users-admin-list`](./test/e2e/users-admin-list.e2e-spec.ts) / [`users-admin-crud`](./test/e2e/users-admin-crud.e2e-spec.ts) / [`users-role-boundary`](./test/e2e/users-role-boundary.e2e-spec.ts) | 管理接口分页 / CRUD 基础路径 / 跨角色边界 |
+| [`users-self-protection`](./test/e2e/users-self-protection.e2e-spec.ts) / [`users-last-super-admin`](./test/e2e/users-last-super-admin.e2e-spec.ts) / [`users-soft-delete`](./test/e2e/users-soft-delete.e2e-spec.ts) / [`users-password-reset`](./test/e2e/users-password-reset.e2e-spec.ts) | 自我保护 / SUPER_ADMIN 互操作正向回归 / 软删副作用矩阵 / 密码重置完整流程(含 §9 token 不主动吊销反向断言) |
+| [`seed`](./test/e2e/seed.e2e-spec.ts) | `prisma/seed.ts` 子进程行为 + production 强校验 |
 
 ---
 
