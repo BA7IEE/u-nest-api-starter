@@ -1,10 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import request, { type Response } from 'supertest';
+import request from 'supertest';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { loginAs } from '../fixtures/auth.fixture';
 import { TEST_PASSWORD, createTestUser } from '../fixtures/users.fixture';
 import { expectBizError } from '../helpers/biz-code.assert';
+import { type AdminEndpoint, callEndpoint } from '../helpers/call-endpoint';
 import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
 
@@ -18,13 +19,6 @@ import { createTestApp } from '../setup/test-app';
 // 说明:Guard 在 service 之前执行,所以 USER 看不到 service 层的 10101 错误码;
 // ADMIN 调 PATCH /:id/role 也是 Guard 先拦,40300 而非 10101——这是 controller
 // 层 @Roles vs service 层 assertCanManageUser 的先后顺序差异。
-
-interface AdminEndpoint {
-  name: string;
-  method: 'get' | 'post' | 'patch' | 'put' | 'delete';
-  path: string; // 含 __ID__ 占位符;调用时 replace 成实际 id
-  body?: object;
-}
 
 const ALL_ADMIN_ENDPOINTS: AdminEndpoint[] = [
   { name: 'GET /api/users', method: 'get', path: '/api/users' },
@@ -87,37 +81,6 @@ const ADMIN_BLOCKED_BY_SERVICE: AdminEndpoint[] = [
   },
   { name: 'DELETE /api/users/:id', method: 'delete', path: '/api/users/__ID__' },
 ];
-
-async function callEndpoint(
-  app: INestApplication,
-  authHeader: string,
-  ep: AdminEndpoint,
-  targetId: string,
-): Promise<Response> {
-  const path = ep.path.replace('__ID__', targetId);
-  const req = request(app.getHttpServer());
-  switch (ep.method) {
-    case 'get':
-      return req.get(path).set('Authorization', authHeader);
-    case 'delete':
-      return req.delete(path).set('Authorization', authHeader);
-    case 'post':
-      return req
-        .post(path)
-        .set('Authorization', authHeader)
-        .send(ep.body ?? {});
-    case 'patch':
-      return req
-        .patch(path)
-        .set('Authorization', authHeader)
-        .send(ep.body ?? {});
-    case 'put':
-      return req
-        .put(path)
-        .set('Authorization', authHeader)
-        .send(ep.body ?? {});
-  }
-}
 
 describe('users 管理接口角色边界', () => {
   let app: INestApplication;
