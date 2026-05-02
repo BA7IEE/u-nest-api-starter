@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint / Typecheck / E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # 与 .env.test 对齐(测试环境配置在仓库公开,值均为非敏感)。
+    # 见 .env.test:1-19。SUPER_ADMIN_EMAIL 故意留空,seed 校验在 APP_ENV=test 下放行默认值。
+    env:
+      APP_ENV: test
+      APP_PORT: '3001'
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/app_test?schema=public
+      APP_CORS_ORIGIN: http://localhost:5173
+      ENABLE_SWAGGER: 'true'
+      JWT_SECRET: test-secret-please-keep-this-string-long-enough-32-chars
+      JWT_EXPIRES_IN: 1h
+      SUPER_ADMIN_USERNAME: admin
+      SUPER_ADMIN_PASSWORD: ChangeMe123456
+      SUPER_ADMIN_EMAIL: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 通过项目自带的 docker-compose.yml 启动 postgres:16-alpine。
+      # 容器名固定为 'u-nest-api-postgres'(见 docker-compose.yml#container_name),与
+      # package.json#db:test:init 与 test/setup/test-db.ts 硬编码的 docker exec 目标一致。
+      # 不使用 GitHub Actions 的 services: 字段:services 容器名由 runner 自动生成,
+      # 无法对齐既有 db:test:init 脚本,会导致 'docker exec u-nest-api-postgres' 失败。
+      - name: Start PostgreSQL 16 service container
+        run: docker compose up -d postgres
+
+      - name: Wait for PostgreSQL ready
+        run: |
+          for i in $(seq 1 60); do
+            if docker exec u-nest-api-postgres pg_isready -U postgres -d app >/dev/null 2>&1; then
+              echo "PostgreSQL is ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "PostgreSQL not ready after 60s; dumping logs:"
+          docker compose logs postgres
+          exit 1
+
+      # pnpm/action-setup 必须在 actions/setup-node 之前,
+      # setup-node 的 'cache: pnpm' 需要 pnpm 已可用才能定位 store。
+      # version 不显式声明,从 package.json#packageManager (pnpm@10.14.0) 自动读取。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Prisma client 不会随 pnpm install 自动生成(项目无 .npmrc / postinstall 钩子,
+      # @prisma/client 的 build script 被 pnpm 默认忽略)。
+      # lint / typecheck / E2E 都依赖 generate 后的类型(如 Role / UserStatus enum),
+      # 因此必须在 lint 前显式生成。
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Initialize test database
+        run: pnpm db:test:init
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
