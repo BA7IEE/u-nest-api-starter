@@ -9,6 +9,7 @@ import jwtConfig from './config/jwt.config';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { HealthModule } from './modules/health/health.module';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    UsersModule,
   ],
   providers: [
     // 顺序固定:JwtAuthGuard 先验登录,RolesGuard 再验角色(详见 ARCHITECTURE.md §7.6)。
