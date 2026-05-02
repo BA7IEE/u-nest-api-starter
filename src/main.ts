@@ -1,11 +1,9 @@
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { applyGlobalSetup } from './bootstrap/apply-global-setup';
 import type { AppConfig } from './config/app.config';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -18,20 +16,9 @@ async function bootstrap(): Promise<void> {
     throw new Error('app.config 未加载,无法启动');
   }
 
-  app.setGlobalPrefix('/api');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  app.useGlobalFilters(new AllExceptionsFilter(appCfg.env === 'production'));
-  app.useGlobalInterceptors(new ResponseInterceptor());
-
-  app.enableCors({ origin: appCfg.corsOrigin });
+  // 全局前缀 / CORS / ValidationPipe / 全局异常过滤器 / 全局响应拦截器 统一在 applyGlobalSetup 内,
+  // main.ts 与 test/setup/test-app.ts 共用,避免双份配置漂移。详见 src/bootstrap/apply-global-setup.ts。
+  applyGlobalSetup(app, appCfg);
 
   // Swagger 开关:开发/test 默认开启,production 仅在 ENABLE_SWAGGER='true' 时开启。
   // swaggerEnabled 已在 app.config.ts 计算好(详见 §8 + §14)。
