@@ -15,6 +15,7 @@ import {
   UpdateUserStatusDto,
   UserResponseDto,
 } from './users.dto';
+import { canChangeRole, canCreateRole, canManageUser, canViewUser } from './users.policy';
 import { SafeUser, userSafeSelect } from './users.select';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -49,16 +50,15 @@ export class UsersService {
     return raw.trim().toLowerCase();
   }
 
-  // 双层校验(§7.11):Guard 已通过 + Service 再按当前/目标角色校验
-  // v1 设计选择:SUPER_ADMIN 可管理任何角色(含其他 SUPER_ADMIN),
-  // 仅受自我保护和最后一个 SUPER_ADMIN 保护约束。
+  // 双层校验(§7.11):Guard 已通过 + Service 再按当前/目标角色校验。
+  // 策略判定集中在 users.policy.ts;此处仅负责把布尔结果转成统一 BizException。
   private assertCanManageUser(
     currentUser: CurrentUserPayload,
     targetUser: Pick<User, 'role'>,
   ): void {
-    if (currentUser.role === Role.SUPER_ADMIN) return;
-    if (currentUser.role === Role.ADMIN && targetUser.role === Role.USER) return;
-    throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
+    if (!canManageUser(currentUser.role, targetUser.role)) {
+      throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
+    }
   }
 
   private assertNotSelf(currentUser: CurrentUserPayload, targetId: string): void {
@@ -176,12 +176,17 @@ export class UsersService {
     const { page, pageSize } = query;
     const where: Prisma.UserWhereInput = this.notDeletedWhere({});
 
-    if (currentUser.role === Role.ADMIN) {
-      where.role = Role.USER;
-    } else if (currentUser.role !== Role.SUPER_ADMIN) {
+    // 列表可见范围由 users.policy.canViewUser 统一定义:
+    //   SUPER_ADMIN 可看 SUPER_ADMIN/ADMIN/USER,ADMIN 仅可看 USER。
+    // 把允许看到的角色压成 IN 子句喂给 Prisma,避免在 service 里再写一次角色 if-else。
+    const visibleRoles = (Object.values(Role) as Role[]).filter((r) =>
+      canViewUser(currentUser.role, r),
+    );
+    if (visibleRoles.length === 0) {
       // defensive,Guard 已拦截非 SUPER_ADMIN/ADMIN
       throw new BizException(BizCode.FORBIDDEN);
     }
+    where.role = { in: visibleRoles };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
@@ -200,13 +205,9 @@ export class UsersService {
   // ============ admin: create ============
 
   async create(currentUser: CurrentUserPayload, dto: CreateUserDto): Promise<UserResponseDto> {
-    // role 透传安全(§7.11):
+    // role 透传安全(§7.11):策略集中在 users.policy.canCreateRole。
     const targetRole = dto.role ?? Role.USER;
-    if (targetRole === Role.SUPER_ADMIN) {
-      // 任何业务 API 永远不能创建 SUPER_ADMIN(只有 seed 能)
-      throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
-    }
-    if (currentUser.role === Role.ADMIN && targetRole !== Role.USER) {
+    if (!canCreateRole(currentUser.role, targetRole)) {
       throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
     }
 
@@ -304,8 +305,8 @@ export class UsersService {
     const target = await this.findRawByIdOrThrow(id);
     this.assertCanManageUser(currentUser, target);
 
-    // 业务 API 禁止把任何人设成 SUPER_ADMIN
-    if (dto.role === Role.SUPER_ADMIN) {
+    // 改角色策略集中在 users.policy.canChangeRole(禁止把任何人设成 SUPER_ADMIN)。
+    if (!canChangeRole(currentUser.role, dto.role)) {
       throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
     }
 
