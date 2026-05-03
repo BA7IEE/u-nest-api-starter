@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - 'Dockerfile'
+      - 'docker-compose.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'prisma/**'
@@ -44,7 +45,7 @@ jobs:
       - name: Wait for PostgreSQL ready
         run: |
           for i in $(seq 1 60); do
-            if docker exec u-nest-api-postgres pg_isready -U postgres -d app >/dev/null 2>&1; then
+            if docker exec u-nest-api-postgres pg_isready -h 127.0.0.1 -U postgres -d app >/dev/null 2>&1; then
               echo "PostgreSQL ready after ${i}s"
               exit 0
             fi
@@ -56,7 +57,7 @@ jobs:
 
       # 独立 DB,与 app(默认)/ app_test(host e2e)隔离,失败排查不互相干扰。
       - name: Create app_smoke database
-        run: docker exec u-nest-api-postgres createdb -U postgres app_smoke
+        run: docker exec u-nest-api-postgres createdb -h 127.0.0.1 -U postgres app_smoke
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
