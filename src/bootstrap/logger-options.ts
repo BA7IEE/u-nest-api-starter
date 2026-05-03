@@ -1,6 +1,17 @@
+import { RequestMethod } from '@nestjs/common';
 import type { Params } from 'nestjs-pino';
 import type { AppConfig } from '../config/app.config';
 import { buildHttpLogProps, genReqId } from './request-id';
+
+// nestjs-pino 默认 forRoutes 是 `[{ path: '*', method: RequestMethod.ALL }]`,与
+// `app.setGlobalPrefix('/api')` 拼接后变成 `/api/*`,触发 NestJS 11 / path-to-regexp v8
+// 的 LegacyRouteConverter 启动期 WARN(LoggerModule 注册两个 middleware,WARN 打两次)。
+// 显式声明命名 wildcard `*path` 跳过该 legacy 转换路径,与 LegacyRouteConverter
+// 错误信息推荐写法一致(`/users/*path` → 本仓库形态 `/api/*path`)。语义不变,仍匹配
+// 全部以 `/api` 开头的请求。
+const LOGGER_FOR_ROUTES: NonNullable<Params['forRoutes']> = [
+  { path: '*path', method: RequestMethod.ALL },
+];
 
 // V1.1 §11.2 / §11.4 / TASKS.md 15.2:
 // 敏感字段 redact 清单。命中字段日志输出 `[REDACTED]`,不能仅做长度截断。
@@ -35,6 +46,7 @@ export function buildLoggerModuleParams(appCfg: AppConfig): Params {
   const level = isTest ? 'silent' : appCfg.logLevel;
 
   return {
+    forRoutes: LOGGER_FOR_ROUTES,
     pinoHttp: {
       level,
       genReqId,
