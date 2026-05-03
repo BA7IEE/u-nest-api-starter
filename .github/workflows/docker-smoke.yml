@@ -14,6 +14,14 @@ on:
       - 'pnpm-lock.yaml'
       - 'prisma/**'
       - '.github/workflows/docker-smoke.yml'
+      # Production boot 敏感路径:Docker Smoke 依赖容器在 production 模式下的真实启动行为。
+      # 仅列出会影响 production boot / config validation / global prefix / logger /
+      # Prisma shutdown 的路径,**不**纳入整个 src/**(业务模块改动走 ci.yml 的 e2e)。
+      - 'src/main.ts'
+      - 'src/app.module.ts'
+      - 'src/bootstrap/**'
+      - 'src/config/**'
+      - 'src/database/**'
 
 jobs:
   docker-smoke:

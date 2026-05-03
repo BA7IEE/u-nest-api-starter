@@ -58,3 +58,31 @@ docker run --rm -p 3000:3000 \
 - migration 必须由部署流程**显式**触发(CI/CD pipeline 独立步骤、K8s `Job` / `initContainer` / Helm pre-upgrade hook、平台一次性 migration job 等),并在应用副本启动**之前**完成
 - 应用 runner 镜像不保证包含 Prisma CLI(runner 阶段已裁掉 devDependencies)。如需在容器环境执行迁移,应使用 CI/CD 的源码工作区(直接 `pnpm prisma:deploy`),或单独构建 migrator 镜像
 - 不在容器启动时自动 migrate 的原因:连库失败会触发反复重启(K8s rollback 行为不可控);多副本同时启动会让多个 `migrate deploy` 并发,Prisma migration_lock 不保证安全。详见 [`Dockerfile`](../Dockerfile) 文末注释
+
+---
+
+## Branch protection / required checks
+
+仓库内 `.github/workflows/` 目前提供两条 CI 流水线:[`ci.yml`](../.github/workflows/ci.yml) 与 [`docker-smoke.yml`](../.github/workflows/docker-smoke.yml)。建议在 GitHub branch protection 中按下表配置 required checks(具体勾选在仓库 Settings → Branches 中操作,代码仓库本身不持有该配置):
+
+| Check | 来源 workflow / job | 建议状态 | 理由 |
+|---|---|---|---|
+| `Lint / Typecheck / E2E` | `ci.yml` 的 `test` job | **required** | 覆盖 lint / typecheck / build / `prisma:deploy` / unit / contract / e2e,是模板核心契约护栏 |
+| `Docker image build` | `ci.yml` 的 `docker-build` job | **required** | 验证多阶段 Dockerfile 在 CI 环境可成功构建出生产镜像 |
+| `Container boot + API smoke + graceful shutdown` | `docker-smoke.yml` 的 `docker-smoke` job | **non-required**(当前阶段建议) | 容器启动级 smoke,受 runner / docker / network 时序影响更高,失败更可能是基础设施抖动而非代码缺陷 |
+
+### 为什么 Docker Smoke 当前建议 non-required
+
+- 该 workflow 在 `pull_request` 触发时启动 docker compose、build 镜像、跑容器、轮询健康检查,链路长,任何一环受 GitHub Actions runner 资源 / Docker daemon 状态 / 网络抖动影响都会失败
+- 它是**早期告警**而非代码契约:真实回归在 `ci.yml` 的 e2e 与 contract 测试已覆盖
+- 失败时维护者应**人工查看** dump 出的 `docker logs` / `/tmp/smoke-*.json`,判断是基础设施问题还是真实回归;不默认阻塞所有 PR
+
+### 什么时候考虑提升为 required
+
+满足任一条件即可考虑把 Docker Smoke 提升为 required check:
+
+- 在 main 上**连续观察 ≥ 4 周**未出现假阳性(失败原因均为真实代码问题,非 runner 抖动)
+- 即将进入正式生产部署前的最后一轮加固(把容器层契约也并入合并门槛)
+- 引入了会显著放大容器启动差异的变更(切换 base image、调整 entrypoint、引入新启动期依赖等)
+
+提升时同步更新本节描述,并在 [`docker-smoke-test.md`](./docker-smoke-test.md) 的"自动化 workflow"指引中标注。

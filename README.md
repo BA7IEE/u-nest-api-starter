@@ -4,6 +4,8 @@
 
 后续承载:公益救援队内部管理系统、U Studio 内部系统、客户项目二开、各类小程序后台。
 
+> **Template baseline: `v0.1.6`.** The `main` branch is currently in **template-freeze mode** — only docs / CI trigger paths may change. New business modules should be developed in **downstream projects** derived from this baseline (e.g. `u-rescue-api`), not in this template repo. 模板已冻结于 `v0.1.6`,新业务模块请在派生项目中开发。
+
 ---
 
 ## 必读文档(改代码前请先读)
