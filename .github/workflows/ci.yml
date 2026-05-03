@@ -96,6 +96,20 @@ jobs:
       - name: Verify production migration command
         run: pnpm prisma:deploy
 
+      # V1.3-5:把 V1.3-1/-2 新增的纯单元测试纳入 CI。
+      # 不依赖数据库,但放在 db setup 之后保持脚本顺序与 docs/v1.3-plan.md 一致;
+      # Jest 启动开销 < 2s,顺序代价可忽略。覆盖:
+      #   - users.policy.spec.ts(canViewUser/canManageUser/canCreateRole/canChangeRole 的 3×3 矩阵)
+      #   - biz-code.constant.spec.ts(BizCode 元属性:key/code 段位/message/httpStatus)
+      - name: Run unit tests
+        run: pnpm test
+
+      # V1.3-5:把 V1.3-3 的 OpenAPI 契约快照纳入 CI。
+      # 复用 e2e 的 globalSetup(已在上一步初始化 / migrate 完成),串行跑 jest-contract.config.ts;
+      # 任何 OpenAPI schema 漂移(路由白名单 / DTO 字段 / 错误响应 schema)都会被快照拦截。
+      - name: Run contract tests
+        run: pnpm test:contract
+
       - name: Run E2E tests
         run: pnpm test:e2e
 
