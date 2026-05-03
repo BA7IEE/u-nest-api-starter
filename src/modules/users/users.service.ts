@@ -61,6 +61,15 @@ export class UsersService {
     }
   }
 
+  // 详情可见性(V1.3-1):查看类操作走 canViewUser,与"修改类"的
+  // canManageUser 拆开。当前两者判定相同,但语义不同——若未来"可见但不可改"
+  // 策略分化,只需改 policy 函数本身,不必改调用点。
+  private assertCanViewUser(currentUser: CurrentUserPayload, targetUser: Pick<User, 'role'>): void {
+    if (!canViewUser(currentUser.role, targetUser.role)) {
+      throw new BizException(BizCode.FORBIDDEN_ROLE_OPERATION);
+    }
+  }
+
   private assertNotSelf(currentUser: CurrentUserPayload, targetId: string): void {
     if (currentUser.id === targetId) {
       throw new BizException(BizCode.CANNOT_OPERATE_SELF);
@@ -238,7 +247,8 @@ export class UsersService {
 
   async findOne(currentUser: CurrentUserPayload, id: string): Promise<UserResponseDto> {
     const target = await this.findRawByIdOrThrow(id);
-    this.assertCanManageUser(currentUser, target);
+    // 详情查看走 canViewUser(V1.3-1):与管理类操作的 canManageUser 在语义上拆开。
+    this.assertCanViewUser(currentUser, target);
     return this.findByIdOrThrow(id);
   }
 
