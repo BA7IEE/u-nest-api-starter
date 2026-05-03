@@ -17,6 +17,12 @@ async function bootstrap(): Promise<void> {
   // test 入口独立。
   app.useLogger(app.get(Logger));
 
+  // V1.1 §11.2 / §15.4:启用 NestJS 关闭钩子,SIGTERM / SIGINT 时触发模块生命周期。
+  // 关闭顺序:HTTP server 停接 → 等待 in-flight 请求 → 各模块 OnModuleDestroy
+  // (PrismaService.$disconnect) → OnApplicationShutdown。
+  // 禁止自写 process.on('SIGTERM') / process.exit(),由 NestJS lifecycle 统一控制。
+  app.enableShutdownHooks();
+
   // 触发 app.config.ts 内的启动强校验(registerAs callback 已在模块解析时执行,
   // 这里再显式 get 一次确保 fail-fast 错误清晰透出)。
   const configService = app.get(ConfigService);
