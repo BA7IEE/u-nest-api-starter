@@ -1,7 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
-import { ApiWrappedOkResponse } from '../../common/decorators/api-response.decorator';
+import {
+  ApiBizErrorResponse,
+  ApiWrappedOkResponse,
+} from '../../common/decorators/api-response.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { BizCode } from '../../common/exceptions/biz-code.constant';
 import { BizException } from '../../common/exceptions/biz.exception';
@@ -71,6 +74,7 @@ export class HealthController {
     summary: '就绪探针(K8s readiness)— 含数据库连通检查;DB 不可用时 HTTP 500 + code 50000',
   })
   @ApiWrappedOkResponse(HealthResponseDto)
+  @ApiBizErrorResponse(BizCode.INTERNAL_ERROR)
   async ready(): Promise<HealthResponseDto> {
     try {
       // PrismaHealthIndicator 内部:先试 $runCommandRaw(MongoDB 命令),
