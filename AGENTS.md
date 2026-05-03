@@ -649,14 +649,21 @@ V1.1 完成后,健康检查端点契约固定为:
 |---|---|---|
 | `GET /api/health` | 进程存活(向后兼容入口,实现等同 `/live`) | `{ code: 0, message: 'ok', data: { status: 'ok' } }` |
 | `GET /api/health/live` | 进程存活(K8s liveness probe) | `{ code: 0, message: 'ok', data: { status: 'ok' } }` |
-| `GET /api/health/ready` | DB 连通(`@nestjs/terminus` 的 `PrismaHealthIndicator` 或等价 `SELECT 1`) | 成功:`{ code: 0, message: 'ok', data: { status: 'ok', db: 'up' } }`;失败:HTTP 503 + `{ code: 50000, message: '服务器内部错误', data: null }` |
+| `GET /api/health/ready` | DB 连通(`@nestjs/terminus` 的 `PrismaHealthIndicator` 或等价 `SELECT 1`) | 成功:`{ code: 0, message: 'ok', data: { status: 'ok', db: 'up' } }`;失败:**HTTP 500** + `{ code: 50000, message: '服务器内部错误', data: null }` |
 
 铁律:
 
 - 三端点都必须 `@Public()`,都走统一响应包装
 - 三端点都必须有 `@ApiOperation({ summary })` + 包装响应装饰器
-- `/api/health/ready` DB 连通失败时,**必须**抛 `BizException(BizCode.INTERNAL_ERROR)`(或新增专用 BizCode,但 V1.1 不强制),让 `AllExceptionsFilter` 输出 503;**禁止**直接 `throw new ServiceUnavailableException()` 绕过统一错误处理
+- `/api/health/ready` DB 连通失败时,**必须**抛 `BizException(BizCode.INTERNAL_ERROR)`,由 `AllExceptionsFilter` 按 `BizCode.INTERNAL_ERROR.httpStatus` 输出 **HTTP 500**;**禁止**直接 `throw new ServiceUnavailableException()` 绕过统一错误处理
 - v1 已有的 `/api/health` E2E 必须继续通过,**不能**因升级 `@nestjs/terminus` 而破坏向后兼容
+
+**关于 ready 失败 HTTP status 的最终决策(方案 A,优先级以 `ARCHITECTURE.md` §11.4 为最高)**:
+
+- `ARCHITECTURE.md` §11.4 规定"HTTP status 由 `BizCode` 的 `httpStatus` 决定";`BizCode.INTERNAL_ERROR.httpStatus` 是 **500**,因此 ready 失败实际响应为 HTTP 500 + `code: 50000`,这是**有意为之**,不是 K8s 标准的 503 readiness 语义
+- V1.1 阶段**不**新增 `BizCode.SERVICE_UNAVAILABLE`、**不**修改 `AllExceptionsFilter`、**不**对 ready 路径做特判;以最小改动半径与最高文档优先级为准
+- AI 代理**不得**在 15.5 范围内自行新增 `BizCode.SERVICE_UNAVAILABLE` 或在 `AllExceptionsFilter` 内对 ready 路径做特殊映射;若未来确需标准 HTTP 503,作为独立任务在 V1.2+ 启动,届时同步更新本节、`CLAUDE.md` §17.5、`TASKS.md` §15.5 三处描述
+- K8s readiness probe 对 5xx 一律视作 unready,500 与 503 在容器编排层面行为一致,生产可用性不受影响
 
 ### 17.6 优雅关闭契约
 

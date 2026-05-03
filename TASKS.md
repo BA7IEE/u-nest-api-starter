@@ -226,6 +226,14 @@
 
 **关键约束**:可以使用 `@nestjs/terminus` 的检查能力(如 `HealthCheckService`、`PrismaHealthIndicator` 或等价的 DB ping),但**不得破坏项目统一响应格式**。`/api/health`、`/api/health/live`、`/api/health/ready` 仍应遵循项目既有 `ResponseInterceptor` 包装规则,响应体仍是 `{ code: 0, message: 'ok', data: { ... } }`,**禁止**为对齐 terminus 原生输出而绕过 `ResponseInterceptor`、自定义跳过列表、或改写 `data` 外层结构。
 
+**关于 ready 失败 HTTP status 的最终决策(方案 A,最高优先级 `ARCHITECTURE.md` §11.4)**:
+
+- ready DB 探测失败时**必须**抛 `BizException(BizCode.INTERNAL_ERROR)`,经 `AllExceptionsFilter` 按 `BizCode.INTERNAL_ERROR.httpStatus` 输出 **HTTP 500**,响应体为 `{ code: 50000, message: '服务器内部错误', data: null }`
+- 本期**不**新增 `BizCode.SERVICE_UNAVAILABLE`,**不**修改 `AllExceptionsFilter`,**不**做 ready 路径特判
+- `ARCHITECTURE.md` §11.4 明确"HTTP status 由 `BizCode` 的 `httpStatus` 决定";`BizCode.INTERNAL_ERROR.httpStatus` 是 500,因此 ready 失败的 HTTP status 必然是 500,这是有意为之的设计选择,而非 K8s 标准 readiness 503 语义
+- 若未来需要标准 HTTP 503,应单独设计 `BizCode.SERVICE_UNAVAILABLE`(建议 `code: 50300`、`httpStatus: 503`),并同步更新本节及 `AGENTS.md` §17.5 / `CLAUDE.md` §17.5;**不在 15.5 范围内处理**
+- K8s readiness probe 对 5xx 一律视作 unready,500 与 503 在容器编排层面行为一致,不影响生产可用性
+
 **前置依赖**:15.1(CI 守住改动后 137 用例 + 新增的 health E2E 一起回归)。
 
 **范围内**:
@@ -233,7 +241,7 @@
 - `src/modules/health/` 升级:
   - 引入 `@nestjs/terminus`
   - `GET /api/health/live` — 进程存活,@Public(),返回 `{ status: 'ok' }`
-  - `GET /api/health/ready` — DB 连通(`PrismaHealthIndicator` 或等价 `prisma.$queryRaw\`SELECT 1\``),@Public(),成功返回 `{ status: 'ok', db: 'up' }`,失败抛 `BizException(BizCode.INTERNAL_ERROR)` → HTTP 503
+  - `GET /api/health/ready` — DB 连通(`PrismaHealthIndicator` 或等价 `prisma.$queryRaw\`SELECT 1\``),@Public(),成功返回 `{ status: 'ok', db: 'up' }`,失败抛 `BizException(BizCode.INTERNAL_ERROR)` → 由 `AllExceptionsFilter` 按 `BizCode.INTERNAL_ERROR.httpStatus` 输出 HTTP 500 + `{ code: 50000, message: '服务器内部错误', data: null }`(详见上方"关于 ready 失败 HTTP status 的最终决策")
   - `GET /api/health` — 保留,实现等同 `/live`,响应仍为 `{ status: 'ok' }`(v1 已有 E2E 必须继续过)
 - 三端点都走 `ResponseInterceptor` 包装(响应体 `{ code: 0, message: 'ok', data: { ... } }`)
 - 三端点都有 `@ApiOperation` + `@ApiWrappedOkResponse(...)`(其中 `data` 的 schema 用一个轻量 `HealthResponseDto`,不要在 v1 的 `users` / `auth` 模块下放)
@@ -264,7 +272,7 @@
 
 - [ ] `GET /api/health` 仍按 v1 契约返回(已有 E2E 通过)
 - [ ] `GET /api/health/live` 返回 200 + 包装响应体
-- [ ] `GET /api/health/ready` DB 通时 200 + `data.db = 'up'`;DB 故障时 503 + `code: 50000`(可手动断 DB 复现)
+- [ ] `GET /api/health/ready` DB 通时 200 + `data.db = 'up'`;DB 故障时 **HTTP 500** + `{ code: 50000, message: '服务器内部错误', data: null }`(可手动断 DB 复现;HTTP status 由 `BizCode.INTERNAL_ERROR.httpStatus` 决定,详见任务卡顶部"最终决策")
 - [ ] Swagger UI 中三端点都能看到完整描述与响应 schema
 - [ ] `pnpm test:e2e` 通过(137 + 新增用例)
 - [ ] `pnpm lint` / `pnpm typecheck` 通过
