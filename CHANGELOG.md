@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+### Docs
+- `docs/docker-smoke-test.md` §6.1 修正启动期 WARN(`[LegacyRouteConverter] Unsupported route path: "/api/*"`)的根因描述。v0.1.5 报告时初步判断与 Swagger 静态资源 / fallback route 有关,**该判断不准确**;v0.1.6 已定位真实根因为 `nestjs-pino` 的 `LoggerModule.configure()` 默认 `forRoutes: [{ path: '*', method: ALL }]` 与 `app.setGlobalPrefix('/api')` 拼接成 `/api/*`,触发 NestJS 11 + path-to-regexp v8 的 `LegacyRouteConverter`,因为 LoggerModule 注册两个 middleware 所以 WARN 重复一次。已在 `src/bootstrap/logger-options.ts` 中通过显式 `forRoutes: [{ path: '*path', method: RequestMethod.ALL }]` 修复。文档同步更新结论行(§9 摘要)标注"已在 v0.1.6 修复",并指明 v0.1.6 之后 smoke 复测应不再出现该 WARN。仅文档修正,smoke test 结果与判定不变,无 API / Prisma schema / 依赖 / Dockerfile / CI / src 变化
+
 ### Changed
 - `.github/workflows/docker-smoke.yml` 的 `pull_request.paths` 增加 `docker-compose.yml`。Docker Smoke workflow 依赖 `docker-compose.yml` 中的 Postgres service / `container_name: u-nest-api-postgres` / 网络名 `u-nest-api-starter_default`,但原 paths 未覆盖该文件,导致后续修改 `docker-compose.yml` 时 workflow 不会自动触发。补齐后 `docker-compose.yml` 变更也会跑 Docker Smoke。Docker Smoke workflow now also runs when `docker-compose.yml` changes
 

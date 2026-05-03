@@ -140,7 +140,7 @@ docker run -d --name u-nest-api-smoke \
 
 ## 6. 发现的问题
 
-### 6.1 启动期 WARN — `path-to-regexp` v6→v7 命名参数缺失
+### 6.1 启动期 WARN — `nestjs-pino` LoggerModule 默认 `forRoutes` 与 path-to-regexp v8 legacy wildcard 冲突(已在 v0.1.6 修复)
 
 启动日志中出现:
 
@@ -148,9 +148,12 @@ docker run -d --name u-nest-api-smoke \
 [LegacyRouteConverter] Unsupported route path: "/api/*". In previous versions, the symbols ?, *, and + were used to denote optional or repeating path parameters. The latest version of "path-to-regexp" now requires the use of named parameters. ... Attempting to auto-convert...
 ```
 
-- 触发位置:Swagger 静态资源挂载与 fallback 路由(NestJS 11 + path-to-regexp 7 升级语义变更)
-- 当前后果:**无功能影响**,NestJS 自动转写 `/api/*` → `/api/*path`;但每次启动会打两条 WARN
-- 处理建议:**单独立项**修一个 PR,把 `/api/*` 显式写成 `/api/*path`(或框架提供的等价 API),消除 warning。**不在 v0.1.5 smoke test 范围内修。**
+> v0.1.5 报告时初步判断与 Swagger 静态资源 / fallback route 有关,**该判断不准确**。v0.1.6 定位到真实根因并修复,以下为更正后的描述。
+
+- **真实根因**:`nestjs-pino` 的 `LoggerModule.configure()` 默认 `forRoutes: [{ path: '*', method: ALL }]`;与 `app.setGlobalPrefix('/api')` 拼接后变成 `/api/*`,触发 NestJS 11 + path-to-regexp v8 的 `LegacyRouteConverter` 自动转写并 warn。LoggerModule 注册 `pino-http` 与 `bindLoggerMiddleware` 两个 middleware,因此 WARN 重复一次(共两条),与 Swagger 无关
+- **当前后果**:无功能影响,NestJS 自动转写为 `/api/*path`,语义不变
+- **修复**:v0.1.6 在 [src/bootstrap/logger-options.ts](../src/bootstrap/logger-options.ts) 显式声明 `forRoutes: [{ path: '*path', method: RequestMethod.ALL }]`,使用 path-to-regexp v8 命名 wildcard 跳过 legacy 转换路径,与 `LegacyRouteConverter` 错误信息推荐写法一致。语义不变,仍匹配全部以 `/api` 开头的请求;无 API / Prisma schema / 依赖 / Dockerfile / CI 变化
+- **后续 smoke 复测**:基于 v0.1.6 及之后镜像启动应**不再出现该 WARN**;若仍出现需检查是否引入了新的 `path: '*'` 形式 middleware 注册
 
 ### 6.2 docker-compose 不再单独维护应用服务(已知设计,非问题)
 
@@ -212,5 +215,5 @@ job 步骤:
 - ✔ Migration / Seed 在镜像外执行,seed 幂等
 - ✔ 全部预期接口契约符合 §4 / §5 / §8
 - ✔ 非 root + Helmet + 结构化日志 + requestId + 敏感字段 redact + 优雅关闭全部生效
-- ⚠ 一个不阻塞功能的 path-to-regexp WARN(§6.1),需独立任务修
+- ⚠ 一个不阻塞功能的 path-to-regexp WARN(§6.1),根因为 `nestjs-pino` LoggerModule 默认 `forRoutes: '*'` 与全局前缀 `/api` 拼接成 `/api/*`,**已在 v0.1.6 修复**
 - 建议第二轮把 smoke 自动化进 CI(§7)
