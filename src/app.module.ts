@@ -3,11 +3,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, type ThrottlerModuleOptions } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import type { Params } from 'nestjs-pino';
 import type { CurrentUserPayload } from './common/decorators/current-user.decorator';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ThrottlerBizGuard } from './common/guards/throttler-biz.guard';
 import appConfig from './config/app.config';
 import type { AppConfig } from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -159,14 +161,47 @@ function buildLoggerModuleParams(appCfg: AppConfig): Params {
         return buildLoggerModuleParams(appCfg);
       },
     }),
+    // V1.1 §11.4 / TASKS.md 15.7:登录接口限流。
+    // 内存 storage(默认 ThrottlerStorageService),不引入 Redis。
+    // 默认对所有路径生效,但 ThrottlerBizGuard.shouldSkip 默认 true,
+    // 仅 @LoginThrottle() 标注的方法才走 limit/ttl 检查(等价于"反向白名单")。
+    // setHeaders: false 完全关闭 X-RateLimit-* 与 Retry-After 头(任务卡 15.7
+    // 明确"不暴露阈值数字、剩余配额、重置时间")。
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): ThrottlerModuleOptions => {
+        const appCfg = configService.get<AppConfig>('app');
+        if (!appCfg) {
+          throw new Error('app.config 未加载,ThrottlerModule 无法初始化');
+        }
+        return {
+          throttlers: [
+            {
+              name: 'default',
+              limit: appCfg.loginThrottle.limit,
+              // throttler ttl 单位是毫秒(见 throttler-storage-service.ts increment 调用)。
+              // app.config 暴露秒数(运维更直观),这里换算 ms。
+              ttl: appCfg.loginThrottle.ttlSeconds * 1000,
+            },
+          ],
+          setHeaders: false,
+        };
+      },
+    }),
     DatabaseModule,
     HealthModule,
     AuthModule,
     UsersModule,
   ],
   providers: [
-    // 顺序固定:JwtAuthGuard 先验登录,RolesGuard 再验角色(详见 ARCHITECTURE.md §7.6)。
-    // 全局注册后,所有未标 @Public() 的接口默认要 JWT;@Roles 在已登录基础上再做角色过滤。
+    // 全局 Guard 顺序(NestJS 按 providers 数组顺序执行):
+    //   ThrottlerBizGuard 先挡爆破(IP 维度,粗粒度),避免攻击流量打到 JWT 解析。
+    //   JwtAuthGuard 验登录(@Public 跳过)。
+    //   RolesGuard 验角色(详见 ARCHITECTURE.md §7.6)。
+    // ThrottlerBizGuard 通过 shouldSkip 默认 true 实现"反向白名单":
+    //   对未标 @LoginThrottle() 的方法直接放行,只有 POST /api/auth/login 走真限流。
+    { provide: APP_GUARD, useClass: ThrottlerBizGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
