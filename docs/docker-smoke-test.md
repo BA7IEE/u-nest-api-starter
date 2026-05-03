@@ -1,8 +1,12 @@
-# Docker Smoke Test — v0.1.5 基线
+# Docker Smoke Test — v0.1.5 首轮手动报告(v0.1.6 已修复其中 logger WARN)
 
-> 第一轮手动验证记录。目标:确认 `Dockerfile`(V1.1 §15.8 多阶段构建)产出的镜像不仅能 build,**还能在容器中真实启动、连库、跑 migration/seed、通过基础 API smoke check**。
+> **本文档定位**:这是 **v0.1.5** 镜像(HEAD `0826787`)的**第一轮手动** Docker smoke test 报告,作为历史快照保留,用于追溯首次容器层验证的执行细节与结论。
 >
-> 范围承诺:本次只做只读/可回滚验证,**不改** Dockerfile / docker-compose.yml / CI / Prisma schema / 运行时代码 / 依赖版本。
+> **v0.1.6 已修复**本文 §6.1 记录的启动期 WARN(`[LegacyRouteConverter] Unsupported route path: "/api/*"`),根因为 `nestjs-pino` 的 `LoggerModule` 默认 `forRoutes: [{ path: '*', ... }]` 与 `app.setGlobalPrefix('/api')` 拼接;详见 `CHANGELOG.md` v0.1.6 段。v0.1.6 之后再跑 smoke 应不再出现该 WARN。
+>
+> **当前自动化以 [`.github/workflows/docker-smoke.yml`](../.github/workflows/docker-smoke.yml) 为准**:本文已不再是回归基线,只承担"首轮手动报告"的归档职责。后续 PR 触发的容器级回归由该 workflow 提供,触发路径覆盖 `Dockerfile` / `docker-compose.yml` / `package.json` / `pnpm-lock.yaml` / `prisma/**` / production boot 敏感路径(`src/main.ts` / `src/app.module.ts` / `src/bootstrap/**` / `src/config/**` / `src/database/**`)/ workflow 自身。
+>
+> **范围承诺(原始)**:本次只做只读/可回滚验证,**不改** Dockerfile / docker-compose.yml / CI / Prisma schema / 运行时代码 / 依赖版本。
 
 ---
 
