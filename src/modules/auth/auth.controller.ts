@@ -1,6 +1,9 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ApiWrappedOkResponse } from '../../common/decorators/api-response.decorator';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBizErrorResponse,
+  ApiWrappedOkResponse,
+} from '../../common/decorators/api-response.decorator';
 import { LoginThrottle } from '../../common/decorators/login-throttle.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { BizCode } from '../../common/exceptions/biz-code.constant';
@@ -23,10 +26,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户名 + 密码登录,返回 JWT' })
   @ApiWrappedOkResponse(LoginResponseDto)
-  @ApiResponse({
-    status: BizCode.TOO_MANY_REQUESTS.httpStatus,
-    description: `${BizCode.TOO_MANY_REQUESTS.message}(code=${BizCode.TOO_MANY_REQUESTS.code})`,
-  })
+  @ApiBizErrorResponse(BizCode.BAD_REQUEST, BizCode.LOGIN_FAILED, BizCode.TOO_MANY_REQUESTS)
   login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(dto);
   }

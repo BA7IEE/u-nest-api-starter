@@ -2,9 +2,11 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import {
+  ApiBizErrorResponse,
   ApiWrappedOkResponse,
   ApiWrappedPageResponse,
 } from '../../common/decorators/api-response.decorator';
+import { BizCode } from '../../common/exceptions/biz-code.constant';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -35,6 +37,7 @@ export class UsersController {
   @Get('me')
   @ApiOperation({ summary: '获取本人资料' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(BizCode.UNAUTHORIZED)
   findMe(@CurrentUser() currentUser: CurrentUserPayload): Promise<UserResponseDto> {
     return this.usersService.findMe(currentUser);
   }
@@ -42,6 +45,7 @@ export class UsersController {
   @Patch('me')
   @ApiOperation({ summary: '修改本人非敏感资料(仅 nickname / avatarKey)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(BizCode.BAD_REQUEST, BizCode.UNAUTHORIZED)
   updateMyProfile(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Body() dto: UpdateMyProfileDto,
@@ -55,6 +59,7 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '用户列表(分页;ADMIN 仅能看到 USER)' })
   @ApiWrappedPageResponse(UserResponseDto)
+  @ApiBizErrorResponse(BizCode.BAD_REQUEST, BizCode.UNAUTHORIZED, BizCode.FORBIDDEN)
   list(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Query() query: ListUsersQueryDto,
@@ -68,6 +73,14 @@ export class UsersController {
     summary: '创建用户;SUPER_ADMIN 可创建 ADMIN/USER,ADMIN 只能创建 USER',
   })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.USERNAME_ALREADY_EXISTS,
+    BizCode.EMAIL_ALREADY_EXISTS,
+  )
   create(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Body() dto: CreateUserDto,
@@ -79,6 +92,13 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '用户详情(ADMIN 仅能查看 USER)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.USER_NOT_FOUND,
+  )
   findOne(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
@@ -90,6 +110,14 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '修改用户资料(不含 username / 密码 / 角色 / 状态)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.USER_NOT_FOUND,
+    BizCode.EMAIL_ALREADY_EXISTS,
+  )
   update(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
@@ -102,6 +130,13 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '管理员重置用户密码(无需 oldPassword)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.USER_NOT_FOUND,
+  )
   resetPassword(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
@@ -114,6 +149,15 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: '修改用户角色(只有 SUPER_ADMIN 能调用)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.CANNOT_OPERATE_SELF,
+    BizCode.USER_NOT_FOUND,
+    BizCode.LAST_SUPER_ADMIN_PROTECTED,
+  )
   updateRole(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
@@ -126,6 +170,15 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '启用/禁用用户(只改 status)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.CANNOT_OPERATE_SELF,
+    BizCode.USER_NOT_FOUND,
+    BizCode.LAST_SUPER_ADMIN_PROTECTED,
+  )
   updateStatus(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
@@ -138,6 +191,15 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: '软删除用户(同时置 deletedAt 与 status=DISABLED)' })
   @ApiWrappedOkResponse(UserResponseDto)
+  @ApiBizErrorResponse(
+    BizCode.BAD_REQUEST,
+    BizCode.UNAUTHORIZED,
+    BizCode.FORBIDDEN,
+    BizCode.FORBIDDEN_ROLE_OPERATION,
+    BizCode.CANNOT_OPERATE_SELF,
+    BizCode.USER_NOT_FOUND,
+    BizCode.LAST_SUPER_ADMIN_PROTECTED,
+  )
   softDelete(
     @CurrentUser() currentUser: CurrentUserPayload,
     @Param() params: IdParamDto,
