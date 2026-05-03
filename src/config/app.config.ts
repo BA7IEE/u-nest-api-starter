@@ -46,12 +46,45 @@ function parseLogLevel(raw: string | undefined, env: AppEnv): LogLevel {
   return value;
 }
 
+// V1.1 §11.5 / TASKS.md 15.7:登录限流参数解析。
+// 留空 → 用 ARCHITECTURE.md §11.5 表里给出的默认值(limit=5,ttl=60 秒)。
+// 显式赋值必须为正整数且落在推荐区间;越界直接 fail-fast,禁止 fallback。
+// 推荐区间来自 §11.5:LIMIT [1, 100],TTL [1, 3600]。
+function parsePositiveInt(
+  raw: string | undefined,
+  fallback: number,
+  fieldName: string,
+  range: { min: number; max: number },
+): number {
+  if (!raw || raw.trim() === '') return fallback;
+  const trimmed = raw.trim();
+  // 允许的字面量:纯数字字符串,不接受 '5.0' / '5e1' / '+5' / 前导 0(超出 0 本身)。
+  // 这里用整数正则 + parseInt 的组合,parseInt 容忍尾随字符(如 '5abc'→5),
+  // 必须先用正则把整段挡下。
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(`${fieldName} 无效:"${raw}",必须是正整数(纯数字字符串)`);
+  }
+  const value = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(value) || value < range.min || value > range.max) {
+    throw new Error(`${fieldName} 超出范围:"${raw}",必须 ∈ [${range.min}, ${range.max}](正整数)`);
+  }
+  return value;
+}
+
+export interface LoginThrottleConfig {
+  // 单 TTL 窗口内允许的最大尝试次数。命中后抛 BizCode.TOO_MANY_REQUESTS。
+  limit: number;
+  // TTL 窗口长度,秒。app.config.ts 暴露秒数(更直观),传给 ThrottlerModule 时换算 ms。
+  ttlSeconds: number;
+}
+
 export interface AppConfig {
   env: AppEnv;
   port: number;
   corsOrigin: string[];
   swaggerEnabled: boolean;
   logLevel: LogLevel;
+  loginThrottle: LoginThrottleConfig;
 }
 
 export default registerAs('app', (): AppConfig => {
@@ -78,5 +111,18 @@ export default registerAs('app', (): AppConfig => {
 
   const logLevel = parseLogLevel(process.env.LOG_LEVEL, env);
 
-  return { env, port, corsOrigin, swaggerEnabled, logLevel };
+  const loginThrottle: LoginThrottleConfig = {
+    limit: parsePositiveInt(process.env.LOGIN_THROTTLE_LIMIT, 5, 'LOGIN_THROTTLE_LIMIT', {
+      min: 1,
+      max: 100,
+    }),
+    ttlSeconds: parsePositiveInt(
+      process.env.LOGIN_THROTTLE_TTL_SECONDS,
+      60,
+      'LOGIN_THROTTLE_TTL_SECONDS',
+      { min: 1, max: 3600 },
+    ),
+  };
+
+  return { env, port, corsOrigin, swaggerEnabled, logLevel, loginThrottle };
 });
