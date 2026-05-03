@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - 'Dockerfile'
+      - 'docker-compose.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'prisma/**'
