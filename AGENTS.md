@@ -636,7 +636,7 @@ V1.1 新增能力**必须**复用 v1 已建立的基础设施:
 
 - **错误处理**:限流命中、健康检查 ready 失败等异常必须经 `BizException` + `AllExceptionsFilter`,响应体仍是 `{ code, message, data: null }`,HTTP status 由 BizCode `httpStatus` 决定;**禁止**直接 `throw new HttpException(...)` 绕过统一错误码
 - **响应格式**:`/api/health` / `/api/health/live` / `/api/health/ready` 三个端点继续走 `ResponseInterceptor` 包装,**不得**为对齐 `@nestjs/terminus` 原生输出绕过包装;Swagger 装饰器使用 `@ApiWrappedOkResponse(...)` 而非裸 `@ApiOkResponse`
-- **错误码段位**:`TOO_MANY_REQUESTS = 42900` 落在 `4xxxx` 通用 HTTP 段,**不**占用业务模块的 `100xx` / `110xx` 段位;`message` 固定为 `请求过于频繁,请稍后重试`,**不暴露阈值数字、剩余配额、重置时间**
+- **错误码段位**:`TOO_MANY_REQUESTS = 42900` 落在 `4xxxx` 通用 HTTP 段,**不**占用业务模块的 `100xx` / `110xx` 段位;`message` 固定为 `请求过于频繁，请稍后再试`,**不暴露阈值数字、剩余配额、重置时间**
 - **配置归属**:`LOG_LEVEL` / `LOGIN_THROTTLE_LIMIT` / `LOGIN_THROTTLE_TTL_SECONDS` 全部归 `src/config/app.config.ts`,启动强校验,默认值在 `app.config.ts` 内统一处理,业务代码不直读 `process.env.XXX`
 - **日志屏蔽清单**:`password` / `newPassword` / `passwordHash` / `authorization` / `cookie` / `token` / `accessToken` / `refreshToken` / `secret` 命中字段在日志中**必须显示为 `[REDACTED]`**,不能仅做长度截断;v1 已有的 `userSafeSelect` 不能因为日志接入而被绕过——日志屏蔽是兜底,DTO 白名单仍是第一道防线
 - **限流作用范围**:`@nestjs/throttler` 当前**只**作用于 `POST /api/auth/login`,**不**全局开启,**不**对其他业务接口加限流;若未来需扩展,必须先更新 `TASKS.md` 与 `ARCHITECTURE.md` §11.2
@@ -689,7 +689,7 @@ async onModuleDestroy() {
 - 限流 storage **必须**是 `@nestjs/throttler` 内存 storage(默认),**禁止**配置 Redis storage
 - 限流参数从 `app.config.ts` 注入,**不**硬编码在装饰器里
 - 超限抛 `BizException(BizCode.TOO_MANY_REQUESTS)`,经 `AllExceptionsFilter` 返回 HTTP 429 + 统一响应体
-- 限流命中后**不要**返回 `Retry-After` 头泄露阈值;若需要,放在响应 headers 而非 body,且不写入日志的 message 字段
+- 限流命中后**不返回** `Retry-After` 头,**也不返回** `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` 头;阈值数字、剩余配额、重置时间**一律不暴露**到响应体或响应头(包括日志的 message 字段)
 
 ### 17.8 V1.1 禁止"顺手做"清单
 

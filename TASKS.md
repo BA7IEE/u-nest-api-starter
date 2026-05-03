@@ -29,15 +29,15 @@
 
 | 编号 | 任务 | 类别 | 依赖前置 | 状态 |
 |---|---|---|---|---|
-| 15.1 | GitHub Actions CI 流水线 | 工程基础 | — | ⬜ 未开始 |
-| 15.2 | 接入结构化日志(`nestjs-pino`) | 可观测性 | 15.1 | ⬜ 未开始 |
-| 15.3 | 请求 ID 贯通(`x-request-id`) | 可观测性 | 15.2 | ⬜ 未开始 |
-| 15.4 | 优雅关闭(shutdown hooks + `OnModuleDestroy`) | 进程生命周期 | 15.1 | ⬜ 未开始 |
-| 15.5 | 健康检查分层(`@nestjs/terminus`) | 进程生命周期 | 15.1 | ⬜ 未开始 |
-| 15.6 | helmet HTTP 安全头 | 安全加固 | 15.1 | ⬜ 未开始 |
-| 15.7 | 登录接口限流(`@nestjs/throttler` + `TOO_MANY_REQUESTS`) | 安全加固 | 15.1 | ⬜ 未开始 |
-| 15.8 | Dockerfile 多阶段构建 | 容器化 | 15.2-15.7 全部完成 | ⬜ 未开始 |
-| 15.9 | V1.1 验收 + README 增量更新 | 收尾 | 15.1-15.8 全部完成 | ⬜ 未开始 |
+| 15.1 | GitHub Actions CI 流水线 | 工程基础 | — | ✅ 已完成 |
+| 15.2 | 接入结构化日志(`nestjs-pino`) | 可观测性 | 15.1 | ✅ 已完成 |
+| 15.3 | 请求 ID 贯通(`x-request-id`) | 可观测性 | 15.2 | ✅ 已完成 |
+| 15.4 | 优雅关闭(shutdown hooks + `OnModuleDestroy`) | 进程生命周期 | 15.1 | ✅ 已完成 |
+| 15.5 | 健康检查分层(`@nestjs/terminus`) | 进程生命周期 | 15.1 | ✅ 已完成 |
+| 15.6 | helmet HTTP 安全头 | 安全加固 | 15.1 | ✅ 已完成 |
+| 15.7 | 登录接口限流(`@nestjs/throttler` + `TOO_MANY_REQUESTS`) | 安全加固 | 15.1 | ✅ 已完成 |
+| 15.8 | Dockerfile 多阶段构建 | 容器化 | 15.2-15.7 全部完成 | ✅ 已完成 |
+| 15.9 | V1.1 验收 + README 增量更新 | 收尾 | 15.1-15.8 全部完成 | ✅ 已完成 |
 
 执行原则:
 
@@ -322,7 +322,7 @@
 
 **范围内**:
 
-- 新增 BizCode 常量:`TOO_MANY_REQUESTS = { code: 42900, message: '请求过于频繁,请稍后重试', httpStatus: HttpStatus.TOO_MANY_REQUESTS }`
+- 新增 BizCode 常量:`TOO_MANY_REQUESTS = { code: 42900, message: '请求过于频繁，请稍后再试', httpStatus: HttpStatus.TOO_MANY_REQUESTS }`
 - `@nestjs/throttler` 全局注册,但**仅作用于 `POST /api/auth/login`**(用 `@Throttle()` 装饰器或 `@SkipThrottle()` 在其余 controller 上跳过,二选一,优先按"白名单装饰"实现:全局默认 `@SkipThrottle()`,只在登录接口加 `@Throttle({ default: { limit, ttl } })`)
 - 限流参数从 `app.config.ts` 注入,新增环境变量:
   - `LOGIN_THROTTLE_LIMIT`(默认 `5`)
@@ -355,7 +355,7 @@
 
 **验收标准**:
 
-- [ ] `POST /api/auth/login` 连续超过限制后返回 HTTP 429 + `{ code: 42900, message: '请求过于频繁,请稍后重试', data: null }`
+- [ ] `POST /api/auth/login` 连续超过限制后返回 HTTP 429 + `{ code: 42900, message: '请求过于频繁，请稍后再试', data: null }`
 - [ ] 限流响应**不含**阈值数字、剩余配额、重置时间
 - [ ] 其他接口(如 `GET /api/users/me`)不被限流(在 E2E 中验证或手动 200+ 次请求观察)
 - [ ] `LOGIN_THROTTLE_LIMIT=0` 启动报错
