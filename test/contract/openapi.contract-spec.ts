@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { createTestApp } from '../setup/test-app';
 
 // V1.3-3 OpenAPI 契约快照。
@@ -82,7 +83,7 @@ describe('OpenAPI 契约快照', () => {
 
   beforeAll(async () => {
     app = await createTestApp();
-    const res = await request(app.getHttpServer()).get('/api/docs-json');
+    const res = await request(httpServer(app)).get('/api/docs-json');
     expect(res.status).toBe(200);
     doc = res.body as OpenApiDoc;
   });

@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { TEST_PASSWORD, createTestUser } from '../fixtures/users.fixture';
 import { expectBizError } from '../helpers/biz-code.assert';
@@ -62,13 +63,13 @@ describe('POST /api/auth/login throttling (V1.1 §15.7)', () => {
   //     先于 controller / service 执行
   it('limit 内的失败登录返回 LOGIN_FAILED,超过即返回 TOO_MANY_REQUESTS', async () => {
     for (let i = 1; i <= 5; i++) {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'throttletest', password: 'WrongPwd1!' });
       expectBizError(res, BizCode.LOGIN_FAILED);
     }
 
-    const blocked = await request(app.getHttpServer())
+    const blocked = await request(httpServer(app))
       .post('/api/auth/login')
       .send({ username: 'throttletest', password: 'WrongPwd1!' });
     expectBizError(blocked, BizCode.TOO_MANY_REQUESTS);
@@ -81,7 +82,7 @@ describe('POST /api/auth/login throttling (V1.1 §15.7)', () => {
 
   it('限流响应不暴露 Retry-After / X-RateLimit-* 头', async () => {
     // 接续上一 it,storage 仍处 block 状态;再发一次直接拿 429
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .post('/api/auth/login')
       .send({ username: 'throttletest', password: 'WrongPwd1!' });
     expect(res.status).toBe(BizCode.TOO_MANY_REQUESTS.httpStatus);
@@ -98,7 +99,7 @@ describe('POST /api/auth/login throttling (V1.1 §15.7)', () => {
 
   it('正确密码在窗口内同样被限流(限流不区分成功/失败)', async () => {
     // 接续:发用户的正确密码,因为 IP-method 维度计数仍处 block,返回 429
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .post('/api/auth/login')
       .send({ username: 'throttletest', password: TEST_PASSWORD });
     expectBizError(res, BizCode.TOO_MANY_REQUESTS);
@@ -109,7 +110,7 @@ describe('POST /api/auth/login throttling (V1.1 §15.7)', () => {
     // 对未标 @LoginThrottle() 的方法直接返回 true 跳过)。
     // 连续 10 次请求都应 200,不会触发任何限流。
     for (let i = 0; i < 10; i++) {
-      const res = await request(app.getHttpServer()).get('/api/health/live');
+      const res = await request(httpServer(app)).get('/api/health/live');
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
         code: 0,

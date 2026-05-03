@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request, { type Response } from 'supertest';
+import { httpServer } from './http-server';
 
 // 通用管理接口端点描述,与 supertest 配合使用动态调用任意 method/path/body 组合。
 // 主要供 it.each 跨多端点参数化用例(如 role-boundary、soft-delete 副作用矩阵)。
@@ -21,7 +22,7 @@ export async function callEndpoint(
   targetId: string,
 ): Promise<Response> {
   const path = ep.path.replace('__ID__', targetId);
-  const req = request(app.getHttpServer());
+  const req = request(httpServer(app));
   switch (ep.method) {
     case 'get':
       return req.get(path).set('Authorization', authHeader);

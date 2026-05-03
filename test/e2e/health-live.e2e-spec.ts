@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
 
@@ -27,7 +28,7 @@ describe('GET /api/health/live (K8s liveness)', () => {
   });
 
   it('returns 200 with wrapped { code: 0, message: "ok", data: { status: "ok" } }', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/live');
+    const res = await request(httpServer(app)).get('/api/health/live');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -38,7 +39,7 @@ describe('GET /api/health/live (K8s liveness)', () => {
   });
 
   it('data 不暴露 db 字段,也不暴露 terminus 原生 info / error / details', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/live');
+    const res = await request(httpServer(app)).get('/api/health/live');
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ status: 'ok' });
@@ -49,7 +50,7 @@ describe('GET /api/health/live (K8s liveness)', () => {
   });
 
   it('@Public 生效:即便客户端不带任何 Authorization 也能访问', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/live');
+    const res = await request(httpServer(app)).get('/api/health/live');
 
     expect(res.status).toBe(200);
     expect(res.body.code).toBe(0);

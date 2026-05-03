@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
 
@@ -24,7 +25,7 @@ describe('Swagger 跳过响应包装', () => {
   });
 
   it('GET /api/docs 返回 Swagger UI HTML,不是 JSON 包装', async () => {
-    const res = await request(app.getHttpServer()).get('/api/docs');
+    const res = await request(httpServer(app)).get('/api/docs');
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/text\/html/);
@@ -34,7 +35,7 @@ describe('Swagger 跳过响应包装', () => {
   });
 
   it('GET /api/docs-json 返回原始 OpenAPI JSON,顶层无 code/message/data', async () => {
-    const res = await request(app.getHttpServer()).get('/api/docs-json');
+    const res = await request(httpServer(app)).get('/api/docs-json');
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/application\/json/);
@@ -46,7 +47,7 @@ describe('Swagger 跳过响应包装', () => {
   });
 
   it('GET /api/docs-yaml 返回原始 YAML,顶层有 openapi: 行', async () => {
-    const res = await request(app.getHttpServer()).get('/api/docs-yaml');
+    const res = await request(httpServer(app)).get('/api/docs-yaml');
 
     expect(res.status).toBe(200);
     // YAML 顶层必有 "openapi: <版本>",作为 OpenAPI spec 的标志

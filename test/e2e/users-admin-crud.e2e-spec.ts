@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
@@ -56,7 +57,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'crsuper1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'crsuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({
@@ -68,7 +69,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       // POST 默认 NestJS HTTP 201(Created),controller 未显式覆盖
       expect(res.status).toBe(201);
       expect(res.body.code).toBe(0);
-      expect(Object.keys(res.body.data).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
+      expect(Object.keys(res.body.data as object).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
       expect(res.body.data.username).toBe('crnewuser1');
       expect(res.body.data.role).toBe(Role.USER);
       expect(res.body.data).not.toHaveProperty('passwordHash');
@@ -79,7 +80,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'crsuper2', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'crsuper2');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crnewadm1', password: TEST_PASSWORD, role: Role.ADMIN });
@@ -92,7 +93,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'cradm1', role: Role.ADMIN });
       const { authHeader } = await loginAs(app, 'cradm1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crnewuser2', password: TEST_PASSWORD });
@@ -107,7 +108,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'roletra1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'roletra1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({
@@ -123,7 +124,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'roletra2', role: Role.ADMIN });
       const { authHeader } = await loginAs(app, 'roletra2');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crnewadm2', password: TEST_PASSWORD, role: Role.ADMIN });
@@ -135,7 +136,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       await createTestUser(app, { username: 'roletra3', role: Role.ADMIN });
       const { authHeader } = await loginAs(app, 'roletra3');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({
@@ -156,7 +157,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('缺 password → BAD_REQUEST,message 含 password', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crmissp1' });
@@ -166,7 +167,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('password 7 字符(< MinLength(8)) → BAD_REQUEST', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crshort1', password: 'Passw1!' });
@@ -176,7 +177,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('password 纯字母无数字 → BAD_REQUEST', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crpureletter1', password: 'PasswordOnly' });
@@ -186,7 +187,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('password 纯数字无字母 → BAD_REQUEST', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'crpurenum1', password: '12345678' });
@@ -196,7 +197,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('username 含非法字符 → BAD_REQUEST,message 含 username', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'bad!@#name', password: TEST_PASSWORD });
@@ -216,7 +217,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     it('重复 username → USERNAME_ALREADY_EXISTS(10002 / 409)', async () => {
       await createTestUser(app, { username: 'uniqdup1' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'uniqdup1', password: TEST_PASSWORD });
@@ -227,7 +228,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     it('username 大小写归一化:已存 "uniqcase1",再传 "UniqCase1" → USERNAME_ALREADY_EXISTS', async () => {
       await createTestUser(app, { username: 'uniqcase1' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'UniqCase1', password: TEST_PASSWORD });
@@ -238,7 +239,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     it('email 大小写归一化:已存 "a@b.com",再传 "A@B.COM" → EMAIL_ALREADY_EXISTS', async () => {
       await createTestUser(app, { username: 'uniqemail1', email: 'a@b.com' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({
@@ -251,7 +252,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('email 空字符串 → 200,db 中 email === null(normalizeEmail 空字符串落 null)', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'uniqemailnull1', password: TEST_PASSWORD, email: '' });
@@ -268,7 +269,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
         data: { deletedAt: new Date() },
       });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/users')
         .set('Authorization', authHeader)
         .send({ username: 'uniqreuse1', password: TEST_PASSWORD });
@@ -287,19 +288,19 @@ describe('users 管理接口 CRUD 基础路径', () => {
     it('SUPER_ADMIN GET 任意活跃用户 → 200,字段集严格', async () => {
       const target = await createTestUser(app, { username: 'getidtarget1' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get(`/api/users/${target.id}`)
         .set('Authorization', authHeader);
 
       expect(res.status).toBe(200);
-      expect(Object.keys(res.body.data).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
+      expect(Object.keys(res.body.data as object).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
       expect(res.body.data.id).toBe(target.id);
     });
 
     it('GET 不存在 id → USER_NOT_FOUND(10001 / 404)', async () => {
       // 合法长度的 cuid 字符样本但 db 里没有此用户
       const fakeCuid = 'clxxx0000000000000000000';
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get(`/api/users/${fakeCuid}`)
         .set('Authorization', authHeader);
 
@@ -313,7 +314,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
         data: { deletedAt: new Date() },
       });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get(`/api/users/${ghost.id}`)
         .set('Authorization', authHeader);
 
@@ -321,7 +322,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('GET id 长度 < 8(IdParamDto @Length(8,64) 拒) → BAD_REQUEST', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users/abc')
         .set('Authorization', authHeader);
 
@@ -336,7 +337,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       const target = await createTestUser(app, { username: 'patchidtarget1' });
       const { authHeader } = await loginAs(app, 'patchidsuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${target.id}`)
         .set('Authorization', authHeader)
         .send({ nickname: 'NewNickname' });
@@ -362,7 +363,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       it.each(FORBIDDEN_PATCH_FIELDS)(
         'PATCH /:id 传禁用字段 %s → 400 / BAD_REQUEST / message 含字段名',
         async (field, value) => {
-          const res = await request(app.getHttpServer())
+          const res = await request(httpServer(app))
             .patch(`/api/users/${targetId}`)
             .set('Authorization', authHeader)
             .send({ [field]: value });
@@ -381,7 +382,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       const target = await createTestUser(app, { username: 'patchemailtarget1' });
       const { authHeader } = await loginAs(app, 'patchemailsuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${target.id}`)
         .set('Authorization', authHeader)
         .send({ email: 'taken@example.com' });
@@ -398,7 +399,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
 
       const before = await prisma.user.findUnique({ where: { id: target.id } });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .put(`/api/users/${target.id}/password`)
         .set('Authorization', authHeader)
         .send({ newPassword: 'NewPass123!' });
@@ -413,7 +414,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       const target = await createTestUser(app, { username: 'roletarget1', role: Role.USER });
       const { authHeader } = await loginAs(app, 'rolesuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${target.id}/role`)
         .set('Authorization', authHeader)
         .send({ role: Role.ADMIN });
@@ -430,7 +431,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       const target = await createTestUser(app, { username: 'statustarget1' });
       const { authHeader } = await loginAs(app, 'statussuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${target.id}/status`)
         .set('Authorization', authHeader)
         .send({ status: 'DISABLED' });
@@ -447,7 +448,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
       const target = await createTestUser(app, { username: 'deltarget1' });
       const { authHeader } = await loginAs(app, 'delsuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .delete(`/api/users/${target.id}`)
         .set('Authorization', authHeader);
 
@@ -470,7 +471,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('PATCH /:id/role { role: "INVALID_ROLE" } → BAD_REQUEST(@IsEnum 拒)', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${targetId}/role`)
         .set('Authorization', authHeader)
         .send({ role: 'INVALID_ROLE' });
@@ -480,7 +481,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('PATCH /:id/status { status: "WEIRD" } → BAD_REQUEST(@IsEnum 拒)', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${targetId}/status`)
         .set('Authorization', authHeader)
         .send({ status: 'WEIRD' });
@@ -490,7 +491,7 @@ describe('users 管理接口 CRUD 基础路径', () => {
     });
 
     it('PUT /:id/password { newPassword: "short" } → BAD_REQUEST(MinLength(8) 拒)', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .put(`/api/users/${targetId}/password`)
         .set('Authorization', authHeader)
         .send({ newPassword: 'short' });

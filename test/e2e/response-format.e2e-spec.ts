@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { expectBizError } from '../helpers/biz-code.assert';
 import { resetDb } from '../setup/reset-db';
@@ -25,7 +26,7 @@ describe('Response format (横切)', () => {
   });
 
   it('成功响应外层固定为 { code: 0, message: "ok", data }', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health');
+    const res = await request(httpServer(app)).get('/api/health');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -36,13 +37,13 @@ describe('Response format (横切)', () => {
   });
 
   it('未带 token 访问受保护接口 → UNAUTHORIZED 严格 message', async () => {
-    const res = await request(app.getHttpServer()).get('/api/users/me');
+    const res = await request(httpServer(app)).get('/api/users/me');
 
     expectBizError(res, BizCode.UNAUTHORIZED);
   });
 
   it('访问不存在的路由 → NOT_FOUND 严格 message,不泄漏路径', async () => {
-    const res = await request(app.getHttpServer()).get('/api/no-such-route');
+    const res = await request(httpServer(app)).get('/api/no-such-route');
 
     // 严格 message:断言响应 message 是 BizCode.NOT_FOUND.message,而不是
     // NestJS 默认的 "Cannot GET /api/no-such-route"——这是反向验证
@@ -52,7 +53,7 @@ describe('Response format (横切)', () => {
   });
 
   it('POST 缺字段 → BAD_REQUEST,message 由 ValidationPipe 透传字段错误', async () => {
-    const res = await request(app.getHttpServer()).post('/api/auth/login').send({});
+    const res = await request(httpServer(app)).post('/api/auth/login').send({});
 
     // strictMessage:false:ValidationPipe 错误细节会拼成多条消息,
     // 不是 BizCode.BAD_REQUEST.message 字面量。
@@ -62,7 +63,7 @@ describe('Response format (横切)', () => {
   });
 
   it('POST 多余字段 → BAD_REQUEST,message 必须包含字段名(forbidNonWhitelisted 生效)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .post('/api/auth/login')
       .send({ username: 'admin1', password: 'whatever', extra: 'y' });
 

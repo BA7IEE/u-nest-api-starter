@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import request, { type Response } from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { TEST_PASSWORD, createTestUser } from '../fixtures/users.fixture';
@@ -29,7 +30,7 @@ describe('POST /api/auth/login', () => {
     it('正确凭证 → 200,返回标准 LoginResponse 结构', async () => {
       await createTestUser(app, { username: 'logintest1' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'logintest1', password: TEST_PASSWORD });
 
@@ -46,7 +47,7 @@ describe('POST /api/auth/login', () => {
     it('accessToken payload 仅含 sub + username + 标准 jwt 字段(无 role / passwordHash)', async () => {
       const user = await createTestUser(app, { username: 'logintest2' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'logintest2', password: TEST_PASSWORD });
 
@@ -69,7 +70,7 @@ describe('POST /api/auth/login', () => {
       // fixture 存 lowercase,验证 service 在登录时把入参归一化后命中
       await createTestUser(app, { username: 'admintest' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'AdminTest', password: TEST_PASSWORD });
 
@@ -85,7 +86,7 @@ describe('POST /api/auth/login', () => {
       // 至少 1ms 间隔,保证 lastLoginAt > testStart 的严格 > 比较成立
       await new Promise((r) => setTimeout(r, 5));
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'lastloginat1', password: TEST_PASSWORD });
       expect(res.status).toBe(200);
@@ -124,7 +125,7 @@ describe('POST /api/auth/login', () => {
       });
 
       const send = (username: string, password: string): Promise<Response> =>
-        request(app.getHttpServer()).post('/api/auth/login').send({ username, password });
+        request(httpServer(app)).post('/api/auth/login').send({ username, password });
 
       resNoUser = await send('nonexistentuser', TEST_PASSWORD);
       resWrongPwd = await send('enumactive', 'WrongPwd1!');
@@ -159,7 +160,7 @@ describe('POST /api/auth/login', () => {
 
   describe('ValidationPipe 边界(直接走 BAD_REQUEST,不查库)', () => {
     it('空 body → BAD_REQUEST,message 含 username 与 password', async () => {
-      const res = await request(app.getHttpServer()).post('/api/auth/login').send({});
+      const res = await request(httpServer(app)).post('/api/auth/login').send({});
 
       expectBizError(res, BizCode.BAD_REQUEST, { strictMessage: false });
       expect(res.body.message).toContain('username');
@@ -167,13 +168,13 @@ describe('POST /api/auth/login', () => {
     });
 
     it('username 太短(2 字符)或含非法字符 → BAD_REQUEST', async () => {
-      const resTooShort = await request(app.getHttpServer())
+      const resTooShort = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'ab', password: TEST_PASSWORD });
       expectBizError(resTooShort, BizCode.BAD_REQUEST, { strictMessage: false });
       expect(resTooShort.body.message).toContain('username');
 
-      const resBadChar = await request(app.getHttpServer())
+      const resBadChar = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'bad!@#', password: TEST_PASSWORD });
       expectBizError(resBadChar, BizCode.BAD_REQUEST, { strictMessage: false });
