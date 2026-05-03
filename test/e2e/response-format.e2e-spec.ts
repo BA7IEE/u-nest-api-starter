@@ -52,9 +52,7 @@ describe('Response format (横切)', () => {
   });
 
   it('POST 缺字段 → BAD_REQUEST,message 由 ValidationPipe 透传字段错误', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({});
+    const res = await request(app.getHttpServer()).post('/api/auth/login').send({});
 
     // strictMessage:false:ValidationPipe 错误细节会拼成多条消息,
     // 不是 BizCode.BAD_REQUEST.message 字面量。

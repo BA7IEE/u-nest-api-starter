@@ -80,8 +80,36 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # 显式跑 nest build,验证 tsconfig.build.json 与构建产物链路;
+      # 防止"typecheck 通过但 build 失败"的隐性回归(例如 nest-cli 配置漂移、
+      # 构建期 import 路径解析与开发期不一致)。
+      - name: Build
+        run: pnpm build
+
       - name: Initialize test database
         run: pnpm db:test:init
 
+      # 显式跑一次生产迁移命令,验证 `pnpm prisma:deploy` 脚本存在且可执行。
+      # 复用同一份测试库 DATABASE_URL,不引入新的数据库服务;E2E 的 globalSetup
+      # 之后还会再跑一次 `prisma migrate deploy`,Prisma 对已应用的 migration
+      # 是 no-op,不会重复执行或失败。
+      - name: Verify production migration command
+        run: pnpm prisma:deploy
+
       - name: Run E2E tests
         run: pnpm test:e2e
+
+  # 验证 Dockerfile 多阶段构建可成功产出生产镜像。
+  # 与上面的 test job 解耦:test 关注源码质量与运行时行为;docker-build 关注交付物链路。
+  # 不做容器启动 / smoke test:容器启动需要外部 PostgreSQL,与 V1.1.1 收口范围(只验证
+  # build 链路)一致;真正的运行时验证仍由 test job 在 Node 进程内的 E2E 完成。
+  docker-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t u-nest-api-starter:ci .

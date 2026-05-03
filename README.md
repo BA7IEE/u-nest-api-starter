@@ -22,7 +22,10 @@
 
 - **Node.js** ≥ 22 LTS
 - **pnpm** 10.14.0(已在 `package.json#packageManager` 钉版本,**禁止使用 npm / yarn / bun**)
-- **Docker**(只用来跑本地 PostgreSQL,不构建应用镜像)
+- **Docker**:
+  - 本地开发:`docker-compose.yml` 用于启动 PostgreSQL
+  - 生产构建:V1.1 起提供应用多阶段 `Dockerfile`(详见下文 [Docker 镜像](#docker-镜像))
+  - 生产数据库迁移:**不由应用容器自动执行**,必须由 CI/CD 或部署流程显式执行 `pnpm prisma:deploy`(等价 `prisma migrate deploy`)
 
 ---
 
@@ -156,7 +159,8 @@ pnpm typecheck         # tsc --noEmit
 pnpm format            # prettier --write
 
 # Prisma
-pnpm prisma:migrate    # 应用 migration(开发态,会触发 generate)
+pnpm prisma:migrate    # 开发环境:应用 migration(会触发 generate,可能生成新 migration 文件)
+pnpm prisma:deploy     # 生产环境:仅应用已审查、已提交的 migration(prisma migrate deploy)
 pnpm prisma:generate   # 仅重新生成 Prisma Client
 pnpm prisma:seed       # 写入默认 super admin(幂等;已存在时不覆盖)
 pnpm prisma:studio     # 图形化数据库 GUI(http://localhost:5555)
@@ -269,9 +273,10 @@ docker run --rm -p 3000:3000 \
 
 ### 生产数据库迁移原则
 
-- 生产环境**只允许** `prisma migrate deploy`(已审查、已提交的 migration);**禁止** `prisma migrate dev`
-- 应用容器**不会**在启动时自动执行 migration:Dockerfile 中没有 entrypoint 触发 `migrate deploy`,`CMD` 只跑 `node dist/main.js`
+- 生产环境**只允许** `prisma migrate deploy`(已审查、已提交的 migration),仓库内的等价入口为 `pnpm prisma:deploy`;**禁止** `prisma migrate dev`
+- 应用 runner 镜像默认只负责运行已构建的 NestJS 应用;**不会**在启动时自动执行 migration:Dockerfile 中没有 entrypoint 触发 `migrate deploy`,`CMD` 只跑 `node dist/main.js`
 - migration 必须由部署流程**显式**触发(CI/CD pipeline 独立步骤、K8s `Job` / `initContainer` / Helm pre-upgrade hook、平台一次性 migration job 等),并在应用副本启动**之前**完成
+- 应用 runner 镜像不保证包含 Prisma CLI(runner 阶段已裁掉 devDependencies)。如需在容器环境执行迁移,应使用 CI/CD 的源码工作区(直接 `pnpm prisma:deploy`),或单独构建 migrator 镜像;V1.1 不交付 migrator target
 - 不在容器启动时自动 migrate 的原因:连库失败会触发反复重启(K8s rollback 行为不可控);多副本同时启动会让多个 `migrate deploy` 并发,Prisma migration_lock 不保证安全。详见 [`Dockerfile`](./Dockerfile) 文末注释
 
 ---

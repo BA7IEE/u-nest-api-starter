@@ -112,15 +112,12 @@ describe('users 管理接口角色边界', () => {
   });
 
   describe('USER 调任何管理接口 → 40300(Guard @Roles 拦截)', () => {
-    it.each(ALL_ADMIN_ENDPOINTS)(
-      'USER 调 $name → 40300',
-      async (ep) => {
-        // path 含 __ID__ 时用 userTargetId 替换让 path 合法;Guard 在路由匹配后、
-        // controller 调用前拦截,所以 target 实际值不影响行为
-        const res = await callEndpoint(app, plainUserAuth, ep, userTargetId);
-        expectBizError(res, BizCode.FORBIDDEN);
-      },
-    );
+    it.each(ALL_ADMIN_ENDPOINTS)('USER 调 $name → 40300', async (ep) => {
+      // path 含 __ID__ 时用 userTargetId 替换让 path 合法;Guard 在路由匹配后、
+      // controller 调用前拦截,所以 target 实际值不影响行为
+      const res = await callEndpoint(app, plainUserAuth, ep, userTargetId);
+      expectBizError(res, BizCode.FORBIDDEN);
+    });
   });
 
   describe('ADMIN 调 PATCH /:id/role → 40300(@Roles(SUPER_ADMIN) 拦截,先于 service)', () => {

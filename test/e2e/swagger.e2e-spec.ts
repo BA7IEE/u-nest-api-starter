@@ -30,9 +30,7 @@ describe('Swagger 跳过响应包装', () => {
     expect(res.headers['content-type']).toMatch(/text\/html/);
     expect(res.text.toLowerCase()).toContain('swagger');
     // 双重验证:res.body 不应是 ResponseInterceptor 包装结构
-    expect(res.body).not.toEqual(
-      expect.objectContaining({ code: 0, message: 'ok' }),
-    );
+    expect(res.body).not.toEqual(expect.objectContaining({ code: 0, message: 'ok' }));
   });
 
   it('GET /api/docs-json 返回原始 OpenAPI JSON,顶层无 code/message/data', async () => {
