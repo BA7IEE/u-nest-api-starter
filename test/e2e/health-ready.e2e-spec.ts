@@ -62,9 +62,7 @@ describe('GET /api/health/ready (K8s readiness)', () => {
     // 模拟 DB 探测失败:让 PrismaHealthIndicator.pingCheck 抛错。
     // HealthCheckService.check 内部检测到非 HealthCheckError 会重新抛出,
     // 被 controller 的 try/catch 接住,转抛 BizException(BizCode.INTERNAL_ERROR)。
-    jest
-      .spyOn(prismaIndicator, 'pingCheck')
-      .mockRejectedValue(new Error('simulated DB outage'));
+    jest.spyOn(prismaIndicator, 'pingCheck').mockRejectedValue(new Error('simulated DB outage'));
 
     const res = await request(app.getHttpServer()).get('/api/health/ready');
 

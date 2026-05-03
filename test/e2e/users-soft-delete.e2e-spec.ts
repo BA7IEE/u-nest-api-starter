@@ -78,13 +78,10 @@ describe('软删用户的副作用矩阵', () => {
 
   // 5 端点 it.each:对软删用户操作均为 USER_NOT_FOUND(notDeletedWhere 过滤生效,
   // 找不到目标 → findRawByIdOrThrow 抛 USER_NOT_FOUND)
-  it.each(TARGET_ENDPOINTS)(
-    '已软删用户被调 $name → USER_NOT_FOUND',
-    async (ep) => {
-      const res = await callEndpoint(app, authHeader, ep, ghostUserId);
-      expectBizError(res, BizCode.USER_NOT_FOUND);
-    },
-  );
+  it.each(TARGET_ENDPOINTS)('已软删用户被调 $name → USER_NOT_FOUND', async (ep) => {
+    const res = await callEndpoint(app, authHeader, ep, ghostUserId);
+    expectBizError(res, BizCode.USER_NOT_FOUND);
+  });
 
   it('已软删用户再 DELETE /:id → USER_NOT_FOUND(softDelete 内 findRawByIdOrThrow 找不到)', async () => {
     const res = await request(app.getHttpServer())

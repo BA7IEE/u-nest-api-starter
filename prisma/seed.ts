@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   if (env === 'production') {
     if (username === 'admin') {
       throw new Error(
-        "[seed] APP_ENV=production 时禁止 SUPER_ADMIN_USERNAME=admin(默认值过于通用)",
+        '[seed] APP_ENV=production 时禁止 SUPER_ADMIN_USERNAME=admin(默认值过于通用)',
       );
     }
     if (password === DEFAULT_PASSWORD) {
