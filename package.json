@@ -1,6 +1,6 @@
 {
   "name": "u-nest-api-starter",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "AI-friendly TypeScript API base — NestJS + Prisma + PostgreSQL",
   "private": true,
   "license": "UNLICENSED",
