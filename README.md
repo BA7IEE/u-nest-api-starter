@@ -107,10 +107,14 @@ pnpm prisma:deploy     # 生产环境:仅应用已审查、已提交的 migratio
 pnpm prisma:seed       # 写入默认 super admin(幂等)
 pnpm prisma:studio     # 图形化数据库 GUI
 
-# E2E 测试
+# 测试(三档,均为护栏,合并前都应通过)
+pnpm test              # unit:不启动 Nest、不连数据库,纯函数 / 类单测,毫秒级反馈
+pnpm test:contract     # contract:OpenAPI 契约快照,锁住 14 个接口的 schema,防止误改入参 / 出参 / 错误码
+pnpm test:e2e          # e2e:端到端 API 测试,启动真实 Nest + 真实 Postgres(app_test 库)
+
+# E2E 测试库管理
 pnpm db:test:init      # 在 Postgres 容器里幂等创建 app_test 测试库(首次)
-pnpm test:e2e          # 跑全部 E2E
 pnpm db:test:reset     # 出现脏数据时重置 app_test
 ```
 
-E2E 详细说明见 [`docs/testing.md`](./docs/testing.md);Docker / 生产部署 / 迁移策略见 [`docs/deployment.md`](./docs/deployment.md)。
+`pnpm test:e2e` 详细说明见 [`docs/testing.md`](./docs/testing.md);Docker / 生产部署 / 迁移策略见 [`docs/deployment.md`](./docs/deployment.md)。
