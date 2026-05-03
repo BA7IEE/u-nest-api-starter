@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role, UserStatus } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
 import { createTestUser } from '../fixtures/users.fixture';
@@ -44,7 +45,7 @@ describe('SUPER_ADMIN 互操作正向回归(剩余 active SUPER_ADMIN ≥ 1)', (
     await createTestUser(app, { username: 'lsadel1c', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'lsadel1a');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .delete(`/api/users/${b.id}`)
       .set('Authorization', authHeader);
 
@@ -68,7 +69,7 @@ describe('SUPER_ADMIN 互操作正向回归(剩余 active SUPER_ADMIN ≥ 1)', (
     await createTestUser(app, { username: 'lsadis1c', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'lsadis1a');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .patch(`/api/users/${b.id}/status`)
       .set('Authorization', authHeader)
       .send({ status: 'DISABLED' });
@@ -86,7 +87,7 @@ describe('SUPER_ADMIN 互操作正向回归(剩余 active SUPER_ADMIN ≥ 1)', (
     await createTestUser(app, { username: 'lsarole1c', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'lsarole1a');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .patch(`/api/users/${b.id}/role`)
       .set('Authorization', authHeader)
       .send({ role: Role.ADMIN });

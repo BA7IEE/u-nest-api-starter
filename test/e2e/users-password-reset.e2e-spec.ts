@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
@@ -44,7 +45,7 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
       const target = await createTestUser(app, { username: 'pwflowtarget1' });
       const before = await prisma.user.findUnique({ where: { id: target.id } });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .put(`/api/users/${target.id}/password`)
         .set('Authorization', superAuth)
         .send({ newPassword: NEW_PASSWORD });
@@ -60,13 +61,13 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
       const target = await createTestUser(app, { username: 'pwoldfail1' });
 
       // 重置
-      await request(app.getHttpServer())
+      await request(httpServer(app))
         .put(`/api/users/${target.id}/password`)
         .set('Authorization', superAuth)
         .send({ newPassword: NEW_PASSWORD });
 
       // 用旧密码登录
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'pwoldfail1', password: TEST_PASSWORD });
 
@@ -76,12 +77,12 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     it('重置后用新密码登录 → 200', async () => {
       const target = await createTestUser(app, { username: 'pwnewok1' });
 
-      await request(app.getHttpServer())
+      await request(httpServer(app))
         .put(`/api/users/${target.id}/password`)
         .set('Authorization', superAuth)
         .send({ newPassword: NEW_PASSWORD });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .post('/api/auth/login')
         .send({ username: 'pwnewok1', password: NEW_PASSWORD });
 
@@ -99,7 +100,7 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     });
 
     it('body 含 oldPassword(本设计不接受) → BAD_REQUEST,message 含 oldPassword', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .put(`/api/users/${targetId}/password`)
         .set('Authorization', superAuth)
         .send({ oldPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD });
@@ -109,7 +110,7 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     });
 
     it('缺 newPassword → BAD_REQUEST,message 含 newPassword', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .put(`/api/users/${targetId}/password`)
         .set('Authorization', superAuth)
         .send({});
@@ -135,7 +136,7 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     it.each(WEAK_PASSWORDS)(
       'newPassword %s → BAD_REQUEST,message 含 password 关键词(大小写不敏感)',
       async (_label, weak) => {
-        const res = await request(app.getHttpServer())
+        const res = await request(httpServer(app))
           .put(`/api/users/${targetId}/password`)
           .set('Authorization', superAuth)
           .send({ newPassword: weak });
@@ -155,13 +156,13 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     const { authHeader: targetAuth } = await loginAs(app, 'pwtokenstay1');
 
     // 先确认 target 旧 token 有效
-    const before = await request(app.getHttpServer())
+    const before = await request(httpServer(app))
       .get('/api/users/me')
       .set('Authorization', targetAuth);
     expect(before.status).toBe(200);
 
     // 管理员重置 target 密码
-    const reset = await request(app.getHttpServer())
+    const reset = await request(httpServer(app))
       .put(`/api/users/${target.id}/password`)
       .set('Authorization', superAuth)
       .send({ newPassword: NEW_PASSWORD });
@@ -170,7 +171,7 @@ describe('管理员重置密码 PUT /api/users/:id/password', () => {
     // 关键:用 target 的旧 token 调 GET /me 仍应 200
     // (JwtStrategy.validate 不读 passwordHash,只看 deletedAt + status === ACTIVE;
     //  passwordHash 改变不影响已签发 token)
-    const after = await request(app.getHttpServer())
+    const after = await request(httpServer(app))
       .get('/api/users/me')
       .set('Authorization', targetAuth);
     expect(after.status).toBe(200);

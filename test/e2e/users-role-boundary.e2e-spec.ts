@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { loginAs } from '../fixtures/auth.fixture';
 import { TEST_PASSWORD, createTestUser } from '../fixtures/users.fixture';
@@ -122,7 +123,7 @@ describe('users 管理接口角色边界', () => {
 
   describe('ADMIN 调 PATCH /:id/role → 40300(@Roles(SUPER_ADMIN) 拦截,先于 service)', () => {
     it('ADMIN 调 PATCH /:id/role 操作 USER → 40300(Guard 拒,不进 service)', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch(`/api/users/${userTargetId}/role`)
         .set('Authorization', adminAuth)
         .send({ role: Role.USER });

@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { loginAs } from '../fixtures/auth.fixture';
 import { createTestUser } from '../fixtures/users.fixture';
@@ -33,7 +34,7 @@ describe('用户管理接口自我保护(assertNotSelf)', () => {
     const a = await createTestUser(app, { username: 'spsuperdel1', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'spsuperdel1');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .delete(`/api/users/${a.id}`)
       .set('Authorization', authHeader);
 
@@ -44,7 +45,7 @@ describe('用户管理接口自我保护(assertNotSelf)', () => {
     const a = await createTestUser(app, { username: 'spsuperdis1', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'spsuperdis1');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .patch(`/api/users/${a.id}/status`)
       .set('Authorization', authHeader)
       .send({ status: 'DISABLED' });
@@ -56,7 +57,7 @@ describe('用户管理接口自我保护(assertNotSelf)', () => {
     const a = await createTestUser(app, { username: 'spsuperrole1', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'spsuperrole1');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .patch(`/api/users/${a.id}/role`)
       .set('Authorization', authHeader)
       .send({ role: Role.ADMIN });
@@ -68,7 +69,7 @@ describe('用户管理接口自我保护(assertNotSelf)', () => {
     const a = await createTestUser(app, { username: 'spsuperact1', role: Role.SUPER_ADMIN });
     const { authHeader } = await loginAs(app, 'spsuperact1');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .patch(`/api/users/${a.id}/status`)
       .set('Authorization', authHeader)
       .send({ status: 'ACTIVE' });
@@ -82,7 +83,7 @@ describe('用户管理接口自我保护(assertNotSelf)', () => {
     const b = await createTestUser(app, { username: 'spadmindel1', role: Role.ADMIN });
     const { authHeader } = await loginAs(app, 'spadmindel1');
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .delete(`/api/users/${b.id}`)
       .set('Authorization', authHeader);
 

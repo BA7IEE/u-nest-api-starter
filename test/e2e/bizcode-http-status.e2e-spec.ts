@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
@@ -26,21 +27,21 @@ describe('BizCode httpStatus ↔ HTTP status 一致性(抽样)', () => {
   });
 
   it('UNAUTHORIZED:无 token 访问受保护接口 → res.status === BizCode.UNAUTHORIZED.httpStatus', async () => {
-    const res = await request(app.getHttpServer()).get('/api/users/me');
+    const res = await request(httpServer(app)).get('/api/users/me');
 
     expect(res.status).toBe(BizCode.UNAUTHORIZED.httpStatus);
     expect(res.body.code).toBe(BizCode.UNAUTHORIZED.code);
   });
 
   it('NOT_FOUND:访问不存在的路由 → res.status === BizCode.NOT_FOUND.httpStatus', async () => {
-    const res = await request(app.getHttpServer()).get('/api/no-such-route');
+    const res = await request(httpServer(app)).get('/api/no-such-route');
 
     expect(res.status).toBe(BizCode.NOT_FOUND.httpStatus);
     expect(res.body.code).toBe(BizCode.NOT_FOUND.code);
   });
 
   it('BAD_REQUEST:ValidationPipe 失败 → res.status === BizCode.BAD_REQUEST.httpStatus', async () => {
-    const res = await request(app.getHttpServer()).post('/api/auth/login').send({});
+    const res = await request(httpServer(app)).post('/api/auth/login').send({});
 
     expect(res.status).toBe(BizCode.BAD_REQUEST.httpStatus);
     expect(res.body.code).toBe(BizCode.BAD_REQUEST.code);

@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { TEST_PASSWORD } from './users.fixture';
 
 export interface AuthCredentials {
@@ -17,9 +18,7 @@ export async function loginAs(
   username: string,
   password: string = TEST_PASSWORD,
 ): Promise<AuthCredentials> {
-  const res = await request(app.getHttpServer())
-    .post('/api/auth/login')
-    .send({ username, password });
+  const res = await request(httpServer(app)).post('/api/auth/login').send({ username, password });
 
   if (res.status !== 200 || res.body?.code !== 0) {
     throw new Error(

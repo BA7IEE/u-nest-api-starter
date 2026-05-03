@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { PrismaHealthIndicator } from '@nestjs/terminus';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { expectBizError } from '../helpers/biz-code.assert';
 import { resetDb } from '../setup/reset-db';
@@ -38,7 +39,7 @@ describe('GET /api/health/ready (K8s readiness)', () => {
   });
 
   it('DB 连通时返回 200 + wrapped { data: { status: "ok", db: "up" } }', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/ready');
+    const res = await request(httpServer(app)).get('/api/health/ready');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -49,7 +50,7 @@ describe('GET /api/health/ready (K8s readiness)', () => {
   });
 
   it('成功路径:data 不暴露 terminus 原生 info / error / details', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/ready');
+    const res = await request(httpServer(app)).get('/api/health/ready');
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ status: 'ok', db: 'up' });
@@ -64,7 +65,7 @@ describe('GET /api/health/ready (K8s readiness)', () => {
     // 被 controller 的 try/catch 接住,转抛 BizException(BizCode.INTERNAL_ERROR)。
     jest.spyOn(prismaIndicator, 'pingCheck').mockRejectedValue(new Error('simulated DB outage'));
 
-    const res = await request(app.getHttpServer()).get('/api/health/ready');
+    const res = await request(httpServer(app)).get('/api/health/ready');
 
     // expectBizError 会同时断言 HTTP status === BizCode.httpStatus(500)
     // 与 body.code === BizCode.code(50000) 和 body.data === null。
@@ -72,7 +73,7 @@ describe('GET /api/health/ready (K8s readiness)', () => {
   });
 
   it('@Public 生效:即便客户端不带任何 Authorization 也能访问', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health/ready');
+    const res = await request(httpServer(app)).get('/api/health/ready');
 
     expect(res.status).toBe(200);
     expect(res.body.code).toBe(0);

@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
@@ -32,13 +33,11 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'listdefault1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'listdefault1');
 
-      const res = await request(app.getHttpServer())
-        .get('/api/users')
-        .set('Authorization', authHeader);
+      const res = await request(httpServer(app)).get('/api/users').set('Authorization', authHeader);
 
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(0);
-      expect(Object.keys(res.body.data).sort()).toEqual(EXPECTED_PAGE_KEYS);
+      expect(Object.keys(res.body.data as object).sort()).toEqual(EXPECTED_PAGE_KEYS);
       expect(res.body.data.page).toBe(1);
       expect(res.body.data.pageSize).toBe(20);
       expect(Array.isArray(res.body.data.items)).toBe(true);
@@ -49,7 +48,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'listcustom1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'listcustom1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?page=2&pageSize=5')
         .set('Authorization', authHeader);
 
@@ -62,7 +61,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'listmax1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'listmax1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=101')
         .set('Authorization', authHeader);
 
@@ -75,7 +74,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'listmin1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'listmin1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?page=0')
         .set('Authorization', authHeader);
 
@@ -87,7 +86,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'listneg1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'listneg1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=-1')
         .set('Authorization', authHeader);
 
@@ -109,7 +108,7 @@ describe('GET /api/users(管理列表)', () => {
       await new Promise((r) => setTimeout(r, 5));
       await createTestUser(app, { username: 'sortuser3' });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=10')
         .set('Authorization', authHeader);
 
@@ -133,7 +132,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'visibleuser1', role: Role.USER });
 
       const { authHeader } = await loginAs(app, 'visiblesuper1');
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=100')
         .set('Authorization', authHeader);
 
@@ -151,7 +150,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'admviuser1', role: Role.USER });
 
       const { authHeader } = await loginAs(app, 'admviadmin1');
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=100')
         .set('Authorization', authHeader);
 
@@ -171,9 +170,7 @@ describe('GET /api/users(管理列表)', () => {
       await createTestUser(app, { username: 'plainuser1', role: Role.USER });
       const { authHeader } = await loginAs(app, 'plainuser1');
 
-      const res = await request(app.getHttpServer())
-        .get('/api/users')
-        .set('Authorization', authHeader);
+      const res = await request(httpServer(app)).get('/api/users').set('Authorization', authHeader);
 
       expectBizError(res, BizCode.FORBIDDEN);
     });
@@ -191,7 +188,7 @@ describe('GET /api/users(管理列表)', () => {
       });
 
       const { authHeader } = await loginAs(app, 'softdelop1');
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users?pageSize=100')
         .set('Authorization', authHeader);
 

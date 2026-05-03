@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { resetDb } from '../setup/reset-db';
 import { createTestApp } from '../setup/test-app';
 
@@ -25,7 +26,7 @@ describe('GET /api/health (smoke)', () => {
   });
 
   it('returns 200 with wrapped { code: 0, message: "ok", data: { status: "ok" } }', async () => {
-    const res = await request(app.getHttpServer()).get('/api/health');
+    const res = await request(httpServer(app)).get('/api/health');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({

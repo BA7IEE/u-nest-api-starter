@@ -74,6 +74,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
+      # V1.4-1:严格模式(`--max-warnings 0`)写在 package.json#scripts.lint 里,
+      # 本地 / CI 共用同一入口;这里保留 `pnpm lint` 直调,删 flag 时要改 npm script
+      # 而不是改 ci.yml,避免本地放行 / CI 严格的二义状态。
       - name: Lint
         run: pnpm lint
 

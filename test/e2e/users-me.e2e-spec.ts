@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
@@ -59,7 +60,7 @@ describe('users /me 接口', () => {
       await createTestUser(app, { username: 'getmeuser1', role: Role.USER });
       const { authHeader } = await loginAs(app, 'getmeuser1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users/me')
         .set('Authorization', authHeader);
 
@@ -68,7 +69,7 @@ describe('users /me 接口', () => {
       expect(res.body.message).toBe('ok');
 
       // 字段集严格 array 断言:任何字段增删错都会挂——反向保护 dto 与 service 同步
-      expect(Object.keys(res.body.data).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
+      expect(Object.keys(res.body.data as object).sort()).toEqual(EXPECTED_USER_RESPONSE_KEYS);
       expect(res.body.data).not.toHaveProperty('passwordHash');
       expect(res.body.data).not.toHaveProperty('deletedAt');
 
@@ -81,7 +82,7 @@ describe('users /me 接口', () => {
       await createTestUser(app, { username: 'getmeadmin1', role: Role.ADMIN });
       const { authHeader } = await loginAs(app, 'getmeadmin1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users/me')
         .set('Authorization', authHeader);
 
@@ -93,7 +94,7 @@ describe('users /me 接口', () => {
       await createTestUser(app, { username: 'getmesuper1', role: Role.SUPER_ADMIN });
       const { authHeader } = await loginAs(app, 'getmesuper1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .get('/api/users/me')
         .set('Authorization', authHeader);
 
@@ -107,7 +108,7 @@ describe('users /me 接口', () => {
       const user = await createTestUser(app, { username: 'patchnick1' });
       const { authHeader } = await loginAs(app, 'patchnick1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch('/api/users/me')
         .set('Authorization', authHeader)
         .send({ nickname: 'Alice' });
@@ -124,7 +125,7 @@ describe('users /me 接口', () => {
       const user = await createTestUser(app, { username: 'patchavatar1' });
       const { authHeader } = await loginAs(app, 'patchavatar1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch('/api/users/me')
         .set('Authorization', authHeader)
         .send({ avatarKey: 'users/abc.png' });
@@ -140,7 +141,7 @@ describe('users /me 接口', () => {
       const user = await createTestUser(app, { username: 'patchboth1' });
       const { authHeader } = await loginAs(app, 'patchboth1');
 
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch('/api/users/me')
         .set('Authorization', authHeader)
         .send({ nickname: 'Bob', avatarKey: 'users/bob.png' });
@@ -167,7 +168,7 @@ describe('users /me 接口', () => {
     it.each(FORBIDDEN_FIELDS)(
       'PATCH /me 传禁用字段 %s → 400 / BAD_REQUEST / message 含字段名',
       async (field, value) => {
-        const res = await request(app.getHttpServer())
+        const res = await request(httpServer(app))
           .patch('/api/users/me')
           .set('Authorization', authHeader)
           .send({ [field]: value });
@@ -189,7 +190,7 @@ describe('users /me 接口', () => {
     });
 
     it('nickname 51 字符(超 @MaxLength(50)) → BAD_REQUEST,message 含 nickname', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch('/api/users/me')
         .set('Authorization', authHeader)
         .send({ nickname: 'a'.repeat(51) });
@@ -200,7 +201,7 @@ describe('users /me 接口', () => {
     });
 
     it('avatarKey 256 字符(超 @MaxLength(255)) → BAD_REQUEST,message 含 avatarKey', async () => {
-      const res = await request(app.getHttpServer())
+      const res = await request(httpServer(app))
         .patch('/api/users/me')
         .set('Authorization', authHeader)
         .send({ avatarKey: 'a'.repeat(256) });

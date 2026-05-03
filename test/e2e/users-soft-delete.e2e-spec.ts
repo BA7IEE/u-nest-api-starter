@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import request from 'supertest';
+import { httpServer } from '../helpers/http-server';
 import { BizCode } from '../../src/common/exceptions/biz-code.constant';
 import { PrismaService } from '../../src/database/prisma.service';
 import { loginAs } from '../fixtures/auth.fixture';
@@ -84,7 +85,7 @@ describe('软删用户的副作用矩阵', () => {
   });
 
   it('已软删用户再 DELETE /:id → USER_NOT_FOUND(softDelete 内 findRawByIdOrThrow 找不到)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .delete(`/api/users/${ghostUserId}`)
       .set('Authorization', authHeader);
 
@@ -92,7 +93,7 @@ describe('软删用户的副作用矩阵', () => {
   });
 
   it('软删后用该 username + 正确密码登录 → LOGIN_FAILED(防账号枚举,与"用户不存在"响应一致)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer(app))
       .post('/api/auth/login')
       .send({ username: 'sdghost1', password: TEST_PASSWORD });
 
