@@ -245,7 +245,7 @@
 | "派生项目**绝不要碰** `src/modules/users/**`" | "可扩展(C 类加业务字段 / B-1 RBAC 升级 / B-8 本人改密码等场景),但必须保留:`userSafeSelect` 不漏 `passwordHash` + 软删除走 `notDeletedWhere()` + 自我保护 + 最后一个 SUPER_ADMIN 保护 + `assertCanManageUser` 双层校验" |
 | "v1 不提供恢复接口" | "派生项目按 [`docs/security.md`](./security.md) §软删除策略 给出的接口契约实施 (`PATCH /api/users/:id/restore`,仅 SUPER_ADMIN,事务内查唯一性);属于 C 类(契约已定义) |
 | "不主动加用户状态缓存优化" | "未触发 `ARCHITECTURE.md` §9 升级条件前不加;触发后按 §9 + 写 ADR(归属 B-10 Redis)" |
-| "V1.1 不修改 prisma schema" | "**仅适用模板 V1.1 加固阶段**(已收尾,见 `TASKS.md`)。派生项目修改 schema 是正常工作流(C 类)" |
+| "V1.1 不修改 prisma schema" | "**仅适用模板 V1.1 加固阶段**(已收尾,历史任务清单见 [`release-tasks/v1.1-engineering-hardening.md`](./release-tasks/v1.1-engineering-hardening.md))。派生项目修改 schema 是正常工作流(C 类)" |
 | "V1.1 不修改 auth / users 业务路由" | "**仅适用模板 V1.1 加固阶段**。派生项目可扩展,守 A 类铁律" |
 | `CLAUDE.md` §17.11 / `AGENTS.md` §17.10 "V1.1 完成后不要自动触发 §9 升级路径" | "派生项目里 §9 升级是正常工作流,通过 ADR 流程触发,不需要等模板再升级一次" |
 | "不引入 `LocalStrategy`" | "已有 `username + password` 路径**不必**为统一抽象引入 LocalStrategy;新增登录策略时按 B-9 走 ADR,放 `strategies/<provider>.strategy.ts`" |

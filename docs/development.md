@@ -31,7 +31,7 @@
         └── ai/               # README.md 占位,v1 不实现
 ```
 
-`bootstrap/`、`users.policy.ts` 在 V1.2 引入,详见 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §11。
+`bootstrap/` 与 `users.policy.ts` 的设计意图详见 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §11(底座工程加固章节);引入背景见 [`release-tasks/v0.1.3-final-report.md`](./release-tasks/v0.1.3-final-report.md)。
 
 ---
 
@@ -80,14 +80,14 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/users/me
 
 完整字段与默认值见 [`.env.example`](../.env.example)。已落地字段:
 
-| 字段 | 用途 | 阶段 |
+| 字段 | 用途 | 归属配置 |
 |---|---|---|
-| `DATABASE_URL` | PostgreSQL 连接串(Prisma CLI 自动读取) | v1 第 3 阶段 |
-| `APP_PORT` / `APP_ENV` / `APP_CORS_ORIGIN` / `ENABLE_SWAGGER` | 应用层运行参数 | v1 第 4 阶段 |
-| `JWT_SECRET` / `JWT_EXPIRES_IN` | JWT 签发参数 | v1 第 7 阶段 |
-| `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` / `SUPER_ADMIN_EMAIL` | seed 默认账号 | v1 第 9 阶段 |
-| `LOG_LEVEL` | pino 日志级别(`fatal`/`error`/`warn`/`info`/`debug`/`trace`),留空时按 `APP_ENV` 自动推断 | V1.1 §15.2 |
-| `LOGIN_THROTTLE_LIMIT` / `LOGIN_THROTTLE_TTL_SECONDS` | 登录接口 IP 维度限流参数,留空默认 `5` / `60` | V1.1 §15.7 |
+| `DATABASE_URL` | PostgreSQL 连接串(Prisma CLI 自动读取) | `src/config/database.config.ts` |
+| `APP_PORT` / `APP_ENV` / `APP_CORS_ORIGIN` / `ENABLE_SWAGGER` | 应用层运行参数 | `src/config/app.config.ts` |
+| `JWT_SECRET` / `JWT_EXPIRES_IN` | JWT 签发参数 | `src/config/jwt.config.ts` |
+| `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` / `SUPER_ADMIN_EMAIL` | seed 默认账号(仅 `prisma/seed.ts` 直读 `process.env`) | 不进 `config/`,见 [`CLAUDE.md`](../CLAUDE.md) §14 |
+| `LOG_LEVEL` | pino 日志级别(`fatal`/`error`/`warn`/`info`/`debug`/`trace`),留空时按 `APP_ENV` 自动推断 | `src/config/app.config.ts` |
+| `LOGIN_THROTTLE_LIMIT` / `LOGIN_THROTTLE_TTL_SECONDS` | 登录接口 IP 维度限流参数,留空默认 `5` / `60` | `src/config/app.config.ts` |
 
 启动强校验细则见 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §8 / §11.5 + [`CLAUDE.md`](../CLAUDE.md) §14 / §17。
 
