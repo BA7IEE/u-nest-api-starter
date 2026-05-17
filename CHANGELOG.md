@@ -4,6 +4,81 @@
 
 ## Unreleased
 
+### v2.0 Phase 0 — 文档宪法升级(RBAC + Auth baseline,2026-05-18)
+
+> **本节是 v2.0 baseline 重置的 Phase 0 工作记录(docs-only PR)**。把 v1 历史阶段列为"不做"的 **RBAC + refresh token + logout** 升级为模板必备能力,并建立"永久红线 / v2.0 baseline 能力 / 派生项目 ADR 解锁能力"三档红线体系。**本 Phase 0 PR 不动 `src/**` / `prisma/**` / `package.json`,不创建 migration,不实现代码**;Phase 1 才落地 schema / migration / seed。
+
+#### Added
+
+- 新增 `docs/adr/ADR-001-v2-rbac-auth-baseline.md`:v2.0 baseline 重置决策记录。涵盖 11 节:背景与动机 / 涉及的模板规则 / 候选方案(A 保留 v1 / B baseline 重置 / C 只升 RBAC)/ 决策(采纳方案 B)/ Prisma schema 设计草案(5 张新表:`Role` / `Permission` / `UserRole` / `RolePermission` / `RefreshToken`)/ 权限码命名两段式严格 / 7 条 baseline 权限 / 3 个种子角色 / **五条 super_admin 铁律** / Guard + Decorator + JwtPayload 设计 / Auth baseline(refresh + logout + rotation)/ 接口契约变更 / 影响范围 / 不变式声明(扩展自永久红线 29 条)/ 升级路径(Phase 0-4 + 派生项目 v1→v2)/ 文档与代码协同 / **5 个补充修订点 A-E**(JWT payload 新增 `jti` / baseline 不建 refresh token family 模型 / logout 语义固定 / 创建用户 `roleCodes` 默认 `['user']` 防权限提升 / `@Public` 与 `@Permissions` 互斥测试约束)/ 验收门槛 / 状态变迁
+- `ARCHITECTURE.md` 新增 §12 v2.0 baseline 升级(RBAC + Auth)章节:摘要 v2.0 一句话总结 / 红线分级三档 / baseline 必备能力清单 / Phase 0-4 实施阶段 / 派生项目 v1→v2 升级建议;并在目录加入 §12 入口
+- `CLAUDE.md` 新增 §18 Claude Code v2.0 baseline 执行约束章节:阶段范围(当前 Phase 0 不允许动 `src` / `prisma`)/ baseline 必备能力清单 / baseline 不做的事(B 类 ADR 解锁)/ v2.0 禁止"顺手做"清单(10 条)/ 阶段验收门槛 / 边界声明
+- `AGENTS.md` 新增 §18 通用 AI Agent v2.0 baseline 执行约束章节,与 `CLAUDE.md` §18 内容同步,差异仅在入口表述
+- `docs/capability-unlock-matrix.md` 新增 B-12(部分通配权限 `user:*` / `*:read`)/ B-13(`@AnyPermission` OR 语义)/ B-14(数据级 / 行级权限)/ B-15(角色继承 / 部门范围权限)四条 v2.0 后细分权限解锁项;新增 B-1-archived 与 B-7-archived 两条退役标记
+- `docs/capability-unlock-matrix.md` §2 状态标记新增 `🟢 baseline-covered`(v2.0 baseline 已覆盖,无需 ADR);§1 速读新增 `BL` 类标识(v2.0 baseline 已覆盖)
+- 各文档顶部新增 v2.0 baseline 升级公告 block:`ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md` / `docs/capability-unlock-matrix.md` 共 4 处
+
+#### Changed
+
+- `ARCHITECTURE.md` §1 设计原则末条:"不预先做 RBAC、多租户、刷新 token" 改为只保留"不预先做多租户",RBAC / 刷新 token 标注 "v2.0 baseline 已升级,见 ADR-001"
+- `ARCHITECTURE.md` §4 v1 范围"不做"表:RBAC 行 / 刷新 token 行的"什么时候再加"列翻转为"v2.0 baseline 已升级";新增"部分通配权限 / `@AnyPermission` / 数据级权限 / 角色继承"汇总行(走 B-12/13/14/15 ADR);本人改密码 / 多租户 / 文件上传 / LLM 等其余条目维持不变(B-8 等 ADR 路径不变)
+- `ARCHITECTURE.md` §5 数据模型 / §6 接口清单 / §7.11 角色层级 / §11 V1.1 章节顶部均新增 v2.0 baseline 升级提示 block,主体内容保留供 v1.x 维护分支参考;§7.11 重要声明改为"v1 历史声明,v2.0 已升级"
+- `ARCHITECTURE.md` §8 环境变量:`JWT_EXPIRES_IN=7d` 标注为 v1 历史变量(deprecated in v2.0),新增 `JWT_ACCESS_EXPIRES_IN=15m` / `JWT_REFRESH_EXPIRES_IN=7d`(v2.0 baseline,Phase 1 才落 `.env.example`)
+- `ARCHITECTURE.md` §9 升级路径表:删除"真要做权限点到按钮级" / "真有无感续期诉求"两行(v2.0 baseline 已覆盖);新增四行(部分通配权限 / OR 装饰器 / 数据级权限 / 角色继承)指向 B-12/13/14/15;表后新增"v2.0 baseline 已覆盖的能力"段落显式标注两条退役
+- `CLAUDE.md` §1 v1 不做的事:整章按"红线三档"重构(`[A]` 永久红线 / `[BL]` v2.0 baseline 已升级 / `[B]` 派生项目 ADR 解锁 / `[C]` 派生项目正常业务 / `[D]` 表述过死);RBAC + refresh token 改为 `[BL]` 标签,本人改密码保留 `[B]`;新增 `[A]` 永久铁律 4 条(权限 code 不进字典 / 命名两段式 / refresh 哈希存储 / JwtPayload 不塞 roles/permissions);永久红线总数从 27 条标注为 29 条
+- `CLAUDE.md` §8 权限与鉴权 / §13 角色层级与管理员保护 / §17 Claude Code V1.1 执行约束:顶部均新增 v2.0 baseline 升级提示 block;原文保留 + 末尾 `<!-- v1 历史声明,v2.0 已升级 -->` 注释
+- `AGENTS.md` §1 / §8 / §13 / §17 同步 CLAUDE.md 修订(差异仅在入口表述与文件命名)
+- `docs/capability-unlock-matrix.md` §B B-1 内容改造为"CASL / ability 表达式引擎"独立解锁条目;新增 B-1-archived 与 B-7-archived 两条退役标记说明 v2.0 baseline 已覆盖范围
+- `docs/capability-unlock-matrix.md` §B B-7 内容改造为"refresh token 残余能力"(access token 主动吊销 / family / 异常重放全链路吊销 / 重置密码同步吊销该用户全部 refresh),主体 refresh + logout + rotation 改为 baseline 已覆盖
+- `docs/capability-unlock-matrix.md` §A 永久红线清单从 27 条扩展为 **29 条**:第 11 条新增"refresh token 哈希存储";第 26 条新增"权限 code 不进字典";第 27 条新增"权限 code 命名两段式严格";第 3 / 7 / 8 / 9 条按 v2.0 语义升级(`JwtPayload 不塞 role` → `不塞 roles/permissions`;`RolesGuard` → `PermissionsGuard`;`@Roles(...)` → `@Permissions(...)`;最后一个 SUPER_ADMIN 保护 + 自我保护 → 五条 super_admin 铁律);新增"v1.x 维护分支的特殊处理"段落(v1.x 分支实际生效 26 条)
+- `docs/capability-unlock-matrix.md` §3 派生项目状态全表:新增 RBAC / refresh token 两行标 🟢 baseline-covered (ADR-001);新增 B-12/13/14/15 四行;CASL 行从原"RBAC / permission"改造而来
+
+#### Not changed(Phase 0 严格不动的范围)
+
+- `src/**` 全部未触碰(无装饰器 / Guard / service / DTO / controller / 测试改动)
+- `prisma/schema.prisma` 未触碰(无字段 / 表 / enum 变更)
+- `prisma/migrations/**` 未触碰(无新增 migration)
+- `prisma/seed.ts` 未触碰
+- `package.json` / `pnpm-lock.yaml` 未触碰(无依赖变更)
+- `.env.example` / `.env.test` 未触碰(`JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` 仅在文档示例中出现,Phase 1 才同步落 `.env.example`)
+- `Dockerfile` / `docker-compose.yml` / `.github/workflows/**` 未触碰
+- 14 个业务接口路径 / 方法 / 入参 / 出参 / 权限标注 / HTTP status / 错误码 / 响应体格式与 v0.1.7 完全一致
+- OpenAPI 契约快照未变化(无 src 改动)
+- 全量 19 spec / 162 用例 E2E 未触碰
+- ADR-001 状态初始为 `Proposed`;合并 PR 时改 `Accepted` + 回填日期
+
+#### v2.0 Phase 0 自检门槛
+
+- `git diff --name-only` 中**无** `src/**` / `prisma/**` / `package.json` / `pnpm-lock.yaml` / `.github/**` 路径
+- 工作目录 `prisma/migrations/` 无新增目录
+- 全仓库 grep 不到"v2.0 不做 RBAC" / "v2.0 禁止 refresh" / "v2.0 禁止 logout" 之类残留表述(ADR-001 / CHANGELOG 内"v1 历史限制"类引用不计)
+- ADR-001 状态保持 `Proposed`
+
+#### v2.0 Phase 1+2+3 合并实施策略采纳(基于 Phase 0 后的可行性核查修订)
+
+- **决策**:Phase 1 **不能单独 PR 合并 `main`**(删 `User.role` + 删 `Role` enum 会让 **18 个文件**的 `import { Role }` + **100+ 处**字面引用 + **9+ 处** `user.role` 字段访问同步 typecheck 红,CI required checks 100% 失败)。修订为 **Phase 1+2+3 合并到同一实现 PR,分 7 个逻辑 commit**;Phase 4 单独 PR。详见 [`docs/adr/ADR-001-v2-rbac-auth-baseline.md`](docs/adr/ADR-001-v2-rbac-auth-baseline.md) §7.1A
+- **不采用替代方案**:双轨过渡 schema(违反 ADR-001 §4.1 "不留双轨")、临时手写 `Role` enum 占位(违反 v1 永久红线"枚举唯一来源是 Prisma schema")两个替代方案均明确拒绝
+- **不调整 GitHub branch protection / required checks**:中间 commit(1-6)CI 红是合规预期,**只在 PR 最终 HEAD(commit 7)CI 全绿后合并**;不绕过 required check,不临时降级为 advisory
+- **中间 commit 的语义**:仅作为 maintainer review 边界与派生项目升级参考序列,**绝对禁止**单独合并 / cherry-pick / revert 到 `main` 或其它发布分支
+- **合并方式**:**优先 `merge commit`**(保 7 个 commit 边界供派生项目按图实施);若团队 git history 偏好线性必须 `squash`,release note 显式列 7 个子步骤;**不允许 `rebase merge`**
+- **fixup commit 整理**:PR 期间允许 `fixup!` / `wip:` 自由 push;**合并前必须本地 `git rebase -i` 整理为 7 个逻辑 commit**(对应 ADR-001 §7.1A.3 表),force-push 触发最终 CI
+- **分支与 release 时序**:① Phase 0(本 PR)合并 `main` + ADR-001 改 `Accepted` → ② **立即**在 `main` HEAD 打 `v1.x-maintenance` 分支 → ③ 从 `main` 开 `v2/rbac-auth-baseline` 实现分支 → ④ PR HEAD CI 全绿 + review 通过 → `merge commit` 进 `main` → ⑤ Phase 4 单独 PR 打 v2.0.0 tag
+- 同步更新文档:`ARCHITECTURE.md` §12.4 / `CLAUDE.md` §18.1 / `AGENTS.md` §18.1 / ADR-001 §7.1 末尾均加入跨引用,指向 ADR-001 §7.1A 作为权威依据
+
+#### v2.0 Phase 0 PR 最终收尾(2026-05-18)
+
+- **ADR-001 状态从 `Proposed` 切换为 `Accepted`**;Accepted 日期回填为 2026-05-18(本 PR 收尾日);§11 状态变迁追加 Accepted 行,并标注"§7.1A Phase 1+2+3 合并实施策略已并入本 ADR"
+- **Phase 0 验收门槛全部通过**:
+  - `git diff --name-only` 仅 5 个 .md 文件 + 1 个新增 ADR,**无** `src/**` / `prisma/**` / `package.json` / `pnpm-lock.yaml` / `.github/**` 路径改动
+  - `prisma/migrations/` 仍只有 `20260502100906_init`,**无**新增 migration 目录
+  - 全仓库 grep "v2.0 不做 RBAC" / "v2.0 禁止 refresh" / "v2.0 禁止 logout" 仅命中显式否决性陈述(本 ADR / CHANGELOG / CLAUDE.md / AGENTS.md 自检条款),无实质性残留
+  - ADR-001 在 `ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md` / `docs/capability-unlock-matrix.md` / `CHANGELOG.md` 五个文档中均被引用至少一次
+- **Phase 1 进入条件**:
+  - 本 PR 合并 `main` 后,**立即**在 `main` HEAD 打 `v1.x-maintenance` 分支
+  - 从 `main` 开 `v2/rbac-auth-baseline` 实现分支,按 ADR-001 §7.1A.3 表分 7 个 commit 推进(Phase 1+2+3 同一 PR)
+  - **不调整 GitHub branch protection / required checks**;只在 PR HEAD CI 全绿后合并
+  - Phase 4(CHANGELOG v2.0.0 release note + capability-matrix 状态全表 🟢 baseline-covered 行刷新 + 打 `v2.0.0` tag)单独 PR
+
 ## v0.1.7 - 2026-05-10
 
 Template freeze 收口、派生指南成文、Docker Smoke 自动化进 CI、`README.md` baseline 字面量同步 bump 到 v0.1.7。所有改动严格落在 docs / CI / release 元数据(`package.json#version` + Swagger `setVersion`)路径,不动 14 个业务接口、Prisma schema、依赖版本。
