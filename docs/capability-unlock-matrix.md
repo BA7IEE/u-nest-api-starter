@@ -1,4 +1,4 @@
-# 能力解锁矩阵
+# 能力解锁矩阵(v1 + v2.0 baseline)
 
 > 把模板里的「v1 不做 / 派生项目可能要做」清单转译为可操作的解锁矩阵。
 >
@@ -8,10 +8,24 @@
 
 ---
 
+> **🚨 v2.0 baseline 升级公告**(2026-05-18 立项)
+>
+> v2.0 baseline 重置了红线分级,新增 `BL` 标签(baseline 已覆盖)与 B-12/13/14/15 四条解锁项;§A 永久红线从 27 条扩展至 29 条。
+>
+> - **B-1 RBAC**:旧"派生项目按 ADR 解锁"已退役,**v2.0 baseline 已覆盖**(状态改为 `🟢 baseline-covered`);B-1 改造为 "CASL / ability 表达式引擎" 解锁条目(默认仍不做)
+> - **B-7 refresh token**:**主体 v2.0 baseline 已覆盖**(refresh + logout + rotation + 哈希存储);**残余**(access token 主动吊销 / Refresh token family / 异常重放全链路吊销 / 重置密码同步吊销该用户全部 refresh)仍走 ADR 解锁
+> - **B-8 本人改密码**:**v2.0 baseline 仍不做**,保留派生项目 ADR 解锁
+> - **新增 B-12 / B-13 / B-14 / B-15**:四条 v2.0 baseline 之外的细分权限能力,详见 §B
+>
+> 设计权威依据:[`adr/ADR-001-v2-rbac-auth-baseline.md`](./adr/ADR-001-v2-rbac-auth-baseline.md)。
+
+---
+
 ## 1. 速读
 
-- **A 类 — 永久铁律**:派生项目也必须保留,见文末 §A
-- **B 类 — 默认禁止,可通过 ADR 解锁**:见 §B(11 个条目,占本文主体)
+- **A 类 — 永久铁律**:派生项目也必须保留,见文末 §A(v2.0 扩展至 29 条)
+- **BL 类 — v2.0 baseline 已覆盖**:模板必备能力,派生项目自动继承;**不需要写 ADR**(参见 ADR-001)
+- **B 类 — 默认禁止,可通过 ADR 解锁**:见 §B(v2.0 扩展为 13 条;原 B-1 / B-7 部分已迁入 BL 类)
 - **C 类 — 派生项目正常业务能力**:见 §C(无需 ADR,守住 A 类铁律即可)
 - **D 类 — 表述过死**:见 §D(给 AI 的"原文如何在派生项目里读"对照表)
 
@@ -21,6 +35,7 @@
 
 | 标记 | 含义 |
 |---|---|
+| 🟢 baseline-covered | **v2.0 baseline 已覆盖**(自动启用,不需要 ADR;但派生项目可在 baseline 之上扩展) |
 | 🔒 未解锁(默认) | 当前派生项目未启用该能力 |
 | 🟡 计划中 | 已立项写 ADR,但代码未完成 |
 | ✅ 已解锁 (ADR-NNN) | ADR Accepted + 代码 + 测试 + 契约全部就绪 |
@@ -30,23 +45,34 @@
 
 ---
 
-## §B 可解锁能力(11 个条目)
+## §B 可解锁能力(v2.0 后共 13 个条目;原 B-1 RBAC / B-7 refresh token 主体已迁入 BL 类)
 
-### B-1 — RBAC / permission 表 / 按钮级权限
+### B-1 — CASL / ability 表达式引擎(原 RBAC 条目改造)
 
 | 字段 | 内容 |
 |---|---|
 | 类别 | B(默认禁止,ADR 解锁) |
-| 模板原文位置 | `CLAUDE.md` §1, `AGENTS.md` §1, `ARCHITECTURE.md` §1 / §4 / §7.11, §9 升级路径行"真要做权限点到按钮级" |
-| 模板为什么不做 | 三层 `Role` 够用 99% 的内部管理系统;permission 表 + casl 是**权限模型升级**,不是渐进改造,会牵动每个 `assertCanManageUser` |
-| 派生项目什么时候可以做 | ① 真出现"按钮级 / 字段级 / 资源级"权限需求;② 出现"用户多角色"诉求;③ 客户提出"权限点要后台可配" |
-| 解锁前必须确认 | 是不是真按钮级,还是"再加一两个角色就够"(后者只需扩 `enum Role`,不是 RBAC);权限点写代码还是写 DB;是否需要 `user_roles` 多对多 |
-| 是否需要 migration | ✅ 新增 `permissions` / `role_permissions` / `user_roles` 表 |
-| 是否需要测试 | ✅ E2E 覆盖每条权限点 + 单测覆盖 `casl` Ability 表达式 |
-| 是否需要更新 OpenAPI contract | ⚠️ 若新增权限管理接口需要;响应格式不变 |
-| 解锁后需更新的文档 | 派生项目的 `CLAUDE.md` 底部追加权限规则段(或 ADR 引用);`docs/permission-model.md` 新增;本矩阵对应行状态;`docs/development.md` 路由总览 |
-| 不变式声明(实施后仍保留) | 全局 `APP_GUARD` 注册顺序、`@Public()` / `@Roles(...)` 互斥、`JwtPayload` 最小化、最后一个活跃 SUPER_ADMIN 保护 |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `ARCHITECTURE.md` §7.11 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §7.3 |
+| v2.0 状态变更 | 🟢 **原"B-1 RBAC / permission 表 / 按钮级权限"已迁入 BL 类(v2.0 baseline 已覆盖,见 ADR-001 §4)**;本条改造为"CASL / ability 表达式引擎"独立解锁条目 |
+| 模板为什么不做 | v2.0 baseline 的 `Set.has(code) \|\| owned.has('*')` 已足够覆盖"接口级权限"诉求;CASL 引入需要额外学习成本与 Ability 表达式版本管理,与 baseline "最小可用"原则不符 |
+| 派生项目什么时候可以做 | ① 出现"按字段级"(如"普通员工只看脱敏后的手机号")或"按记录条件"(如"销售只看自己负责的客户")的复杂规则;② baseline 的两段式权限码已无法清晰表达;③ 客户提"权限要按表达式后台可配" |
+| 解锁前必须确认 | 是不是真表达式级,还是"再加一两条权限码就够";Ability 写代码还是写 DB;CASL Subject / Action / Condition 三元组的语义边界;是否联动 B-14 数据级权限 |
+| 是否需要 migration | ⚠️ 若 Ability 表达式存 DB 需要(`AbilityRule` 表) |
+| 是否需要测试 | ✅ E2E 覆盖每条 Ability 表达式 + 单测覆盖 CASL Subject / Action / Condition |
+| 是否需要更新 OpenAPI contract | ⚠️ 若新增 Ability 管理接口需要 |
+| 解锁后需更新的文档 | 派生项目 `CLAUDE.md` 底部追加 CASL 规则段;`docs/ability-model.md` 新增;本矩阵对应行状态 |
+| 不变式声明(实施后仍保留) | 全局 `APP_GUARD` 注册顺序、`@Public()` / `@Permissions(...)` 互斥、`JwtPayload` 最小化、五条 super_admin 铁律、permission code 仍是代码契约(CASL 表达式之外的固定权限码不变) |
 | 当前派生项目状态 | 🔒 未解锁 |
+
+### B-1-archived — RBAC / permission 表 / 按钮级权限(已退役,v2.0 baseline 覆盖)
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | BL(v2.0 baseline 已覆盖) |
+| 模板原文位置 | `ARCHITECTURE.md` §12 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4 |
+| 退役原因 | v2.0 baseline 把 `User → Role → Permission` 四表 + `@Permissions` + `PermissionsGuard` + 三个种子角色 + 七条种子权限纳入模板必备能力;派生项目自动继承,**不再需要单独写 ADR** |
+| 当前派生项目状态 | 🟢 baseline-covered(自动启用) |
+| 派生项目可在 baseline 之上扩展什么 | 增删非系统角色;调整 `admin` / `user` 角色的权限关联;新增业务权限码(按 `<resource>:<action>` 两段式严格命名);更高级能力走 B-1(CASL)/ B-12-15 |
 
 ### B-2 — 组织树 / 多租户
 
@@ -128,20 +154,31 @@
 | 不变式声明(实施后仍保留) | 日志 redact 清单(`password` / `token` / `passwordHash` 等敏感字段在 audit JSON 中同样需要 redact)、统一响应格式 |
 | 当前派生项目状态 | 🔒 未解锁 |
 
-### B-7 — refresh token / token 主动吊销
+### B-7-archived — refresh token 主体(已退役,v2.0 baseline 覆盖)
 
 | 字段 | 内容 |
 |---|---|
-| 类别 | B |
-| 模板原文位置 | `CLAUDE.md` §1, `ARCHITECTURE.md` §6 / §9, [`docs/security.md`](./security.md) "Token 吊销升级路径"(已给出 5 步 schema 演进方案) |
-| 模板为什么不做 | JWT + `status=DISABLED` 已覆盖封禁主路径;refresh token 增加状态管理复杂度 |
-| 派生项目什么时候可以做 | ① 小程序 7 天 token 太短,需要无感续期;② 管理员重置密码后旧 token 必须立即失效;③ PC 端"踢人下线" |
-| 解锁前必须确认 | 走 `docs/security.md` 已给出的 `tokenVersion` 方案,还是 refresh token + Redis blacklist;refresh token TTL 与 access token TTL 的差距;轮转(rotation)策略 |
-| 是否需要 migration | ✅ `User.tokenVersion` 字段(回填 0)或 `RefreshToken` 表 |
-| 是否需要测试 | ✅ 重置密码后旧 access token 立即失效;refresh 接口轮转;并发刷新场景 |
-| 是否需要更新 OpenAPI contract | ✅ 若新增 `POST /api/auth/refresh` |
-| 解锁后需更新的文档 | `docs/security.md` "Token 吊销升级路径"状态从"未实现"改为"已实现 (ADR-NNN)";`CLAUDE.md` §1 / `AGENTS.md` §1 对应行加 ADR 引用 |
-| 不变式声明(实施后仍保留) | `JwtPayload` 最小化(可加 `tv`,但不塞 role);两阶段错误码区分(`LOGIN_FAILED` vs `UNAUTHORIZED`);防账号枚举四场景 |
+| 类别 | BL(v2.0 baseline 已覆盖) |
+| 模板原文位置 | `ARCHITECTURE.md` §12 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4.7 |
+| 退役原因 | v2.0 baseline 把短 TTL access(15m)+ 长 TTL refresh(7d)+ `RefreshToken` 表 + `tokenHash` sha256 存储 + rotation 强制 + 单 session logout 纳入模板必备能力 |
+| 当前派生项目状态 | 🟢 baseline-covered(自动启用) |
+| 派生项目可在 baseline 之上扩展什么 | 调整 `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN`;baseline 之外的更高级能力走 B-7 残余 |
+
+### B-7 — refresh token 残余能力(token 主动吊销 / family / 异常重放全链路吊销)
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | B(默认禁止,ADR 解锁) |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §9.2 / §7.3 |
+| baseline 已覆盖 | refresh token + logout + rotation + 哈希存储 + 单 token 重放检测(已 `revokedAt` 的 token 再次使用 → 抛 `UNAUTHORIZED`) |
+| baseline **未**覆盖(本条解锁范围) | ① **Access token 主动吊销**(blacklist);② **Refresh token family / reuse detection 全链路吊销**(被盗检测后吊销该 family 全部 token);③ **重置密码同步吊销该用户全部 refresh token**;④ **Refresh token 撤销列表**(集中查询所有活跃 session) |
+| 派生项目什么时候可以做 | ① 真出现 refresh token 被盗风险需要全链路回收;② 管理员重置密码必须立即吊销旧 access(不接受短 TTL 窗口);③ 客户端需要"查看所有活跃 session 并选择性踢出" |
+| 解锁前必须确认 | access 黑名单走 Redis(联动 B-10)还是 DB;family 模型(`parentTokenId` / `familyId`)字段设计;reuse detection 触发后是否通知用户;重置密码后吊销选项是开发态还是用户配置 |
+| 是否需要 migration | ✅ `RefreshToken` 表加 `parentId` / `familyId` 字段(family 模型);可能新增 `AccessTokenBlacklist` 表(若不走 Redis) |
+| 是否需要测试 | ✅ 重置密码后旧 access token 立即失效;family 异常重放全链路回收;并发刷新场景;active sessions 列表 / 单 session 强制吊销 |
+| 是否需要更新 OpenAPI contract | ✅ 若新增 `GET /api/auth/sessions` / `DELETE /api/auth/sessions/:id` |
+| 解锁后需更新的文档 | `docs/security.md` "Token 吊销升级路径"状态;`CLAUDE.md` §18.3 / `AGENTS.md` §18.3 对应行加 ADR 引用 |
+| 不变式声明(实施后仍保留) | `JwtPayload` 最小化(`{ sub, username, typ, jti }`,不塞 roles / permissions);防账号枚举四场景;refresh token 哈希存储(永久红线第 11 条);logout 单 session 语义(ADR-001 §9.3);五条 super_admin 铁律 |
 | 当前派生项目状态 | 🔒 未解锁 |
 
 ### B-8 — 本人改密码接口(`PUT /api/users/me/password`)
@@ -208,6 +245,72 @@
 | 不变式声明(实施后仍保留) | 流式响应若走 SSE,加入 `ResponseInterceptor` 跳过列表;敏感日志 redact 清单包含 prompt / completion;Swagger 100% 覆盖 |
 | 当前派生项目状态 | 🔒 未解锁 |
 
+### B-12 — 部分通配权限(`user:*` / `*:read`)
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | B(默认禁止,ADR 解锁) |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4.6 / §7.3 |
+| 模板为什么不做 | baseline 仅支持全权 `*` 通配,部分通配会让权限计算复杂(需要在 Guard 内做 glob 匹配),且容易让派生项目滥用通配掩盖真实权限边界 |
+| 派生项目什么时候可以做 | ① 业务权限码数量超过 20 条,某些角色需要"该资源全部操作"或"全系统读"时;② 复杂中后台权限分组 |
+| 解锁前必须确认 | 通配规则的精确语法(glob? 正则?);是否允许多级通配(`*:*`);通配权限的 audit log;通配与超级用户 `*` 的区分 |
+| 是否需要 migration | ❌ 通常无,Permission 表已支持任意 code 字符串 |
+| 是否需要测试 | ✅ Guard 通配匹配单测 + 每条通配权限的 E2E |
+| 是否需要更新 OpenAPI contract | ❌ 通常无 |
+| 解锁后需更新的文档 | 派生项目 `CLAUDE.md` 底部追加通配规则段;本矩阵对应行状态 |
+| 不变式声明(实施后仍保留) | 权限码命名仍是 `<resource>:<action>` 两段式(通配 `*` 出现在 `resource` 或 `action` 段);全权 `*` 仅 super_admin 拥有 |
+| 当前派生项目状态 | 🔒 未解锁 |
+
+### B-13 — `@AnyPermission(...)` OR 语义装饰器
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | B(默认禁止,ADR 解锁) |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4.6 |
+| 模板为什么不做 | baseline 仅 AND 语义;OR 装饰器易让权限判定语义模糊;真有 OR 诉求往往可以通过"拆成两个 endpoint""service 层手动判断"或"加一条聚合权限码"解决 |
+| 派生项目什么时候可以做 | ① 某接口"持有 A 权限或 B 权限"任一即可访问,且拆 endpoint 不优雅;② 多角色共享接口但权限码不同 |
+| 解锁前必须确认 | 与 `@Permissions` (AND) 是否互斥(同 endpoint 不能同时标);OR 与 super_admin `*` 的优先级;是否需要 `@AllPermissions` 显式别名(增强可读性) |
+| 是否需要 migration | ❌ |
+| 是否需要测试 | ✅ E2E 覆盖 OR 命中 / 全部缺失 / 部分缺失三种情况 |
+| 是否需要更新 OpenAPI contract | ⚠️ Swagger 错误响应描述可能需要调整 |
+| 解锁后需更新的文档 | 派生项目 `CLAUDE.md` 底部追加 OR 装饰器使用规则 |
+| 不变式声明(实施后仍保留) | `@Public` 与 `@AnyPermission` 仍互斥(扩展永久红线第 8 条);Guard 注册顺序不变 |
+| 当前派生项目状态 | 🔒 未解锁 |
+
+### B-14 — 数据级 / 行级权限(`user:read:own` 之类)
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | B(默认禁止,ADR 解锁) |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4 / §7.3 |
+| baseline 行为 | `user:read` 看所有未软删用户;不按角色 / 部门过滤可见范围(v1 的 "ADMIN 仅看 USER" 在 v2.0 baseline 已取消) |
+| 模板为什么不做 | 数据级权限规则与业务强耦合(按部门? 按创建者? 按客户归属?);baseline 一刀切会限制派生项目自由度 |
+| 派生项目什么时候可以做 | ① 出现"ADMIN 只能管理自己创建的用户";② "ADMIN 仅看本部门成员";③ 客户提"按数据归属看数据"诉求 |
+| 解锁前必须确认 | 数据归属字段(`createdBy` / `ownerId` / `orgId`);过滤逻辑放 controller 还是 service;是否联动 B-2(组织树)或 B-1(CASL);权限码命名(`user:read:own` 仍违反两段式红线!推荐改成 `user_own:read` 或单独走 CASL) |
+| 是否需要 migration | ⚠️ 若需要 `User.createdBy` / `User.ownerId` 字段则需要 |
+| 是否需要测试 | ✅ E2E 覆盖数据归属过滤的边界 |
+| 是否需要更新 OpenAPI contract | ⚠️ 响应数据集变小,字段不变;若新增"看自己 vs 看全部"的子路径则需要 |
+| 解锁后需更新的文档 | 派生项目 `CLAUDE.md` 数据权限段;`docs/data-permission.md` 新增 |
+| 不变式声明(实施后仍保留) | 权限码命名 `<resource>:<action>` 两段式(若需要 `:own` 这种归属类后缀,改造为 `user_own` 虚拟资源);五条 super_admin 铁律;最后一个 active super_admin 保护 |
+| 当前派生项目状态 | 🔒 未解锁 |
+
+### B-15 — 角色继承(`parentRoleId`)/ 部门范围权限
+
+| 字段 | 内容 |
+|---|---|
+| 类别 | B(默认禁止,ADR 解锁) |
+| 模板原文位置 | `CLAUDE.md` §1 / `AGENTS.md` §1 / `docs/adr/ADR-001-v2-rbac-auth-baseline.md` §4 / §7.3 |
+| baseline 行为 | 角色平铺,权限合并取并集;不支持角色继承,不支持按部门过滤权限 |
+| 模板为什么不做 | 角色继承的合并规则(子覆盖父?并集?差集?)与业务强耦合;部门范围权限通常先要 B-2(组织树)解锁 |
+| 派生项目什么时候可以做 | ① 内管系统出现"经理 = 普通员工 + 部门视图"的角色继承需求;② 客户提"权限按部门范围细分"且不能用 B-14 数据级权限替代 |
+| 解锁前必须确认 | 继承规则(并集 / 覆盖);最大继承深度;是否需要 B-2 组织树先解锁;部门范围权限的存储方式(`RolePermission` 加 `scope` 字段?还是新表) |
+| 是否需要 migration | ✅ `Role.parentId` 字段(自引用)+ 可能 `RolePermission.scope` 字段 |
+| 是否需要测试 | ✅ E2E 覆盖角色继承合并 + 循环引用防护 |
+| 是否需要更新 OpenAPI contract | ⚠️ 若需要"按部门拉取权限"接口 |
+| 解锁后需更新的文档 | 派生项目 `CLAUDE.md` 角色继承段;`docs/role-inheritance.md` 新增;若联动 B-2 则同步 `docs/organization.md` |
+| 不变式声明(实施后仍保留) | 三个 baseline 角色 `code` 不可改;权限码命名两段式;五条 super_admin 铁律(`super_admin` 不可作为任何角色的子角色) |
+| 当前派生项目状态 | 🔒 未解锁 |
+
 ---
 
 ## §C 派生项目正常业务能力(无需 ADR)
@@ -256,44 +359,56 @@
 
 按"违反后果严重程度"由重到轻排列。**任何 ADR 都不能削弱本节任一条目**。
 
+> **v2.0 升级提示**:本清单从 v1 的 27 条扩展为 **29 条**(新增第 11 条 refresh token 哈希存储 + 第 26 条权限 code 不进字典 + 第 27 条权限码命名两段式)。部分原条目的表述按 v2.0 baseline 语义升级(第 3 / 7 / 8 / 9 条,详见标注),**实质语义不变,只是从 v1 单值 Role 升级到 v2.0 RBAC 等价物**。
+
 ### 安全底线类(违反直接导致漏洞)
 
 1. `passwordHash` 永不出响应(`userSafeSelect` 不能漏)
 2. 密码落库前必须 `bcrypt.hash()`(salt rounds=10)
-3. `JwtPayload` 不塞 `role` / 完整用户对象;角色判断走本次查库
+3. `JwtPayload` 不塞 `roles` / `permissions` / 完整用户对象;权限判定走本次查库 _**(v2.0 升级:v1 表述为"不塞 role",v2.0 扩展为"不塞 roles / permissions";实质不变)**_
 4. 登录失败四场景统一响应(`LOGIN_FAILED` / HTTP 401)+ Timing 防御(`bcrypt.compare(dummyHash)`)
 5. 生产环境拒绝默认 `JWT_SECRET` / `APP_CORS_ORIGIN=*` / `SUPER_ADMIN_*` 默认值
 6. 业务代码不直读 `process.env`,统一走 `*.config.ts`
-7. 全局 `APP_GUARD` 注册(`JwtAuthGuard` → `RolesGuard`),禁止 controller 上 `@UseGuards(...)`
-8. `@Public()` 与 `@Roles(...)` 互斥
-9. 最后一个活跃 SUPER_ADMIN 保护 + 自我保护(同事务内检查)
-10. 日志 redact 清单(`password` / `newPassword` / `passwordHash` / `token` / `secret` 等)命中字段必须 `[REDACTED]`,不能只做长度截断
+7. 全局 `APP_GUARD` 注册(`JwtAuthGuard` → `PermissionsGuard`),禁止 controller 上 `@UseGuards(...)` _**(v2.0 升级:v1 表述为 `RolesGuard`,v2.0 替换为 `PermissionsGuard`;注册顺序不变)**_
+8. `@Public()` 与 `@Permissions(...)` 互斥 _**(v2.0 升级:v1 表述为 `@Roles(...)`,v2.0 替换为 `@Permissions(...)`)**_
+9. 五条 super_admin 铁律 + 最后一个活跃 super_admin 保护 + 自我保护(同事务内检查)_**(v2.0 升级:展开自 v1 "最后一个活跃 SUPER_ADMIN 保护 + 自我保护",详见 ADR-001 §4.5)**_
+10. 日志 redact 清单(`password` / `newPassword` / `passwordHash` / `token` / `refreshToken` / `accessToken` / `secret` 等)命中字段必须 `[REDACTED]`,不能只做长度截断
+11. **(v2.0 新增)** refresh token 哈希存储(sha256),不存明文;rotation 时旧 token 立即 `revokedAt`
 
 ### 契约稳定类(违反破坏前端 / 监控)
 
-11. 统一响应格式 `{ code, message, data }`
-12. BizCode 三字段对象(`code` / `message` / `httpStatus`)+ `BizException` 类型签名锁死
-13. BizCode 段位规划(`4xxxx`/`5xxxx` 通用 / `100xx`+`101xx` users / `110xx`+ 后续模块每段 200 个号段)
-14. Swagger 100% 覆盖,使用 `@ApiWrapped*` 装饰器
-15. 响应拦截器跳过路径(`/api/docs` / `/api/docs-json` / `/metrics` / 文件下载流)
-16. OpenAPI 契约快照(`pnpm test:contract`)+ E2E 测试(`pnpm test:e2e`)作为 CI 合并门槛
-17. 健康检查向后兼容:`/api/health` 必须仍按 v1 契约返回 `{ code: 0, message: 'ok', data: { status: 'ok' } }`
+12. 统一响应格式 `{ code, message, data }`
+13. BizCode 三字段对象(`code` / `message` / `httpStatus`)+ `BizException` 类型签名锁死
+14. BizCode 段位规划(`4xxxx`/`5xxxx` 通用 / `100xx`+`101xx` users / `110xx`+ 后续模块每段 200 个号段)
+15. Swagger 100% 覆盖,使用 `@ApiWrapped*` 装饰器
+16. 响应拦截器跳过路径(`/api/docs` / `/api/docs-json` / `/metrics` / 文件下载流)
+17. OpenAPI 契约快照(`pnpm test:contract`)+ E2E 测试(`pnpm test:e2e`)作为 CI 合并门槛
+18. 健康检查向后兼容:`/api/health` 必须仍按 v1 契约返回 `{ code: 0, message: 'ok', data: { status: 'ok' } }`
 
 ### 工程一致性类(违反让 AI 写错)
 
-18. pnpm-only,禁止 npm / yarn / bun
-19. 全局 `ValidationPipe`(`whitelist` + `forbidNonWhitelisted` + `transform`)
-20. 入参 / 出参 DTO 分离,**禁止 `*.entity.ts`**
-21. 入参 DTO 字段白名单(`UpdateMyProfileDto` / `UpdateUserDto` 不允许字段透传)
-22. 唯一性预检查用 `findUnique`(包含软删),业务详情查询用 `findFirst + notDeletedWhere`
-23. 软删除走 `update({ deletedAt, status: DISABLED })`,**禁止** `prisma.user.delete()`
-24. 已应用的 migration 不可改写,只能新增 migration 增量演进
-25. `prisma migrate dev` 必须先说明再执行;生产只跑 `migrate deploy`
+19. pnpm-only,禁止 npm / yarn / bun
+20. 全局 `ValidationPipe`(`whitelist` + `forbidNonWhitelisted` + `transform`)
+21. 入参 / 出参 DTO 分离,**禁止 `*.entity.ts`**
+22. 入参 DTO 字段白名单(`UpdateMyProfileDto` / `UpdateUserDto` 不允许字段透传)
+23. 唯一性预检查用 `findUnique`(包含软删),业务详情查询用 `findFirst + notDeletedWhere`
+24. 软删除走 `update({ deletedAt, status: DISABLED })`,**禁止** `prisma.user.delete()`
+25. 已应用的 migration 不可改写,只能新增 migration 增量演进;`prisma migrate dev` 必须先说明再执行,生产只跑 `migrate deploy`
+26. **(v2.0 新增)** 权限 code 是代码契约,**不进字典表**,后台无 create/update/delete 接口;baseline `Permission` 表是只读种子,后台不暴露写接口
+27. **(v2.0 新增)** 权限 code 命名统一 `<resource>:<action>` 两段式,**不允许任何"唯一例外"**(`user_role:assign` 是把 user_role 当虚拟资源,不是三段式;`user:role:assign` 旧式三段写法已被本红线明确否决)
 
 ### 文档协作类(违反让 AI 在派生项目里迷路)
 
-26. 派生项目不删改 `ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md` 继承段落,优先追加;确需修改时先 ADR(见 [`derived-project-governance.md`](./derived-project-governance.md) §7)
-27. ADR 文件不删,即使状态是 Rejected(保留决策历史)
+28. 派生项目不删改 `ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md` 继承段落,优先追加;确需修改时先 ADR(见 [`derived-project-governance.md`](./derived-project-governance.md) §7)
+29. ADR 文件不删,即使状态是 Rejected(保留决策历史)
+
+### v1.x 维护分支的特殊处理
+
+派生项目若仍维护 v1.x 分支(未升级到 v2.0),按以下方式读本节:
+
+- 第 3 / 7 / 8 / 9 条按 v1 等价表述执行(`role` 单值 / `RolesGuard` / `@Roles(...)` / 最后一个 SUPER_ADMIN 保护 + 自我保护)
+- 第 11 / 26 / 27 条 v1.x 分支**不适用**(没有 refresh token / 没有 Permission 表 / 没有权限码概念)
+- v1.x 实际生效 26 条(v2.0 的 29 条减第 11 / 26 / 27 三条 v2.0 新增);v2.0+ 派生项目 29 条全部生效
 
 ---
 
@@ -303,17 +418,23 @@
 
 | 能力 | 类别 | 当前状态 | ADR 编号 | 备注 |
 |---|---|---|---|---|
-| RBAC / permission | B-1 | 🔒 未解锁 | — | — |
+| **RBAC**(`User → Role → Permission` 四表) | **BL**(原 B-1) | 🟢 baseline-covered | ADR-001 | v2.0 baseline 已覆盖;派生项目自动继承 |
+| **Refresh token + logout + rotation 主体** | **BL**(原 B-7 主体) | 🟢 baseline-covered | ADR-001 | v2.0 baseline 已覆盖;派生项目自动继承 |
+| CASL / ability 表达式引擎(原 B-1 改造) | B-1 | 🔒 未解锁 | — | baseline `Set.has() + *` 已足够 |
 | 组织树 / 多租户 | B-2 | 🔒 未解锁 | — | — |
 | 文件上传 Provider | B-3 | 🔒 未解锁 | — | — |
 | 附件元数据 | B-4 | 🔒 未解锁 | — | — |
 | 字典管理 | B-5 | 🔒 未解锁 | — | — |
 | 审计日志持久化 | B-6 | 🔒 未解锁 | — | — |
-| refresh token / 吊销 | B-7 | 🔒 未解锁 | — | — |
-| 本人改密码 | B-8 | 🔒 未解锁 | — | — |
+| refresh token 残余(access 黑名单 / family / 重放回收) | B-7 | 🔒 未解锁 | — | baseline 已覆盖 refresh + rotation + logout;残余能力联动 B-10 |
+| 本人改密码 | B-8 | 🔒 未解锁 | — | v2.0 baseline 仍不做 |
 | 微信 / 第三方登录 | B-9 | 🔒 未解锁 | — | — |
 | Redis / 队列 / 定时 | B-10 | 🔒 未解锁 | — | — |
 | LLM / 向量检索 | B-11 | 🔒 未解锁 | — | — |
+| 部分通配权限(`user:*` / `*:read`) | B-12(v2.0 新增) | 🔒 未解锁 | — | baseline 仅全权 `*` 一档 |
+| `@AnyPermission(...)` OR 装饰器 | B-13(v2.0 新增) | 🔒 未解锁 | — | baseline 仅 AND |
+| 数据级 / 行级权限 | B-14(v2.0 新增) | 🔒 未解锁 | — | baseline 不按归属过滤 |
+| 角色继承 / 部门范围权限 | B-15(v2.0 新增) | 🔒 未解锁 | — | baseline 角色平铺 |
 
 ---
 
