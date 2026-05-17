@@ -7,6 +7,43 @@
 
 ---
 
+## 派生项目快速指引(若当前仓库是派生项目)
+
+**判断当前仓库类别**(AI Agent 启动时主动判断):
+
+- `package.json#name` 是 `u-nest-api-starter` → **模板仓库**(本指引不适用,正文铁律严格生效)
+- `package.json#name` 不是 `u-nest-api-starter` → **派生项目**(本指引生效)
+- `README.md` 顶部含 "Template baseline: ..." + "template-freeze mode" 字样 → **模板仓库**
+
+**派生项目里读本文铁律的方式**:
+
+1. 本文 §1 列出的"v1 不做"清单,在派生项目里**按下方四类标签解读**:
+   - `[A]` — 永久铁律,派生项目也不做(无法解锁,任何 ADR 都不能削弱)
+   - `[B]` — 默认禁止,可通过 ADR 解锁(走流程后可做)
+   - `[C]` — 派生项目正常业务能力(直接做,守 A 类铁律即可)
+   - `[D]` — 表述过死,按 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) §D 的"派生项目如何读"行动
+2. 触碰 `[B]` / `[C]` / `[D]` 时,**不要直接拒绝**,也不要直接动代码:
+   - `[B]` → 先查 `docs/adr/`,有 ADR 按 ADR 实施,无 ADR 暂停引导用户写
+   - `[C]` → 直接实施,守 A 类铁律
+   - `[D]` → 按矩阵对照表
+3. 触碰 `[A]` 时,**必须拒绝**并向用户说明铁律来源,引导寻找不破坏铁律的替代方案
+
+**派生项目对继承文档的修改规则**:
+
+- 派生项目**默认不删改** `ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md` 继承段落
+- **优先**通过追加"派生项目专属规则"覆盖(在文档底部新增章节)
+- 如确需修改继承段落,**必须先有 ADR**(状态 Accepted),并在被修改段落旁加 `<!-- 派生项目自定义,见 ADR-NNN -->` 注释
+- **无论如何**不得删除或削弱 A 类永久铁律(完整 27 条清单见 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) §A)
+
+**派生项目治理细则**:
+
+- [`docs/derived-project-governance.md`](./docs/derived-project-governance.md) — 治理总则、ADR 流程、AI 决策路径
+- [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) — 11 项 B 类能力的解锁条件与影响范围
+
+**§17 V1.1 执行约束 在派生项目里不适用**(V1.1 是模板自身工程加固阶段,已收尾,见 `TASKS.md`)。派生项目跳过 §17。
+
+---
+
 ## 0. 修改代码前必读
 
 - 通用 Agent 必读:`ARCHITECTURE.md` / `AGENTS.md`;如使用 Claude Code,还必须读 `CLAUDE.md`
@@ -18,22 +55,29 @@
 
 ---
 
-## 1. v1 不做的事(刻意砍,需要时再加)
+## 1. v1 不做的事(分四类解读)
 
-升级触发条件见 `ARCHITECTURE.md` §9。**以下功能 AI 不得擅自补全**:
+> 升级触发条件见 `ARCHITECTURE.md` §9。
+>
+> **在模板仓库**:以下清单是硬禁止,AI 不得擅自补全。
+> **在派生项目**:按每项末尾 `[A]` / `[B]` / `[C]` / `[D]` 标签分类处理,详见上方"派生项目快速指引"与 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md)。
 
-- 不做 RBAC(permission 表 / 按钮级权限 / casl)——三层 `Role` 不算 RBAC
-- 不做文件上传具体实现(本地 / OSS / R2)
-- 不做 Redis / 队列 / 定时任务
-- 不做注册接口、刷新 token、**本人改密码接口** `PUT /api/users/me/password`
-- 不做微信小程序登录、多租户、组织树
-- 不做 LLM / 向量检索——`modules/ai/` 只放 `README.md` 占位
-- 不做操作日志 / 登录日志、字典管理
-- 不引入 `LocalStrategy`——`username + password` 校验在 `auth.service.ts` 内手写
-- 不创建 `*.entity.ts`——本项目不是 TypeORM 项目
-- 不使用 Prisma 全局软删除中间件 / client extension
-- 不主动加用户状态缓存"优化"
-- 不预先做 storage Provider——`common/storage/` 只放 interface 与 types,**不需要 `.module.ts`**
+- `[B]` 不做 RBAC(permission 表 / 按钮级权限 / casl)——三层 `Role` 不算 RBAC(派生项目按 ADR 解锁,见矩阵 B-1)
+- `[B]` 不做文件上传具体实现(本地 / OSS / R2)(派生项目按 ADR 解锁,见矩阵 B-3 / B-4)
+- `[B]` 不做 Redis / 队列 / 定时任务(派生项目按 ADR 解锁,见矩阵 B-10)
+- `[B]` 不做注册接口、刷新 token、**本人改密码接口** `PUT /api/users/me/password`(派生项目按 ADR 解锁,见矩阵 B-7 / B-8)
+- `[B]` 不做微信小程序登录、多租户、组织树(派生项目按 ADR 解锁,见矩阵 B-2 / B-9)
+- `[B]` 不做 LLM / 向量检索——`modules/ai/` 只放 `README.md` 占位(派生项目按 ADR 解锁,见矩阵 B-11)
+- `[B]` 不做操作日志 / 登录日志、字典管理(派生项目按 ADR 解锁,见矩阵 B-5 / B-6)
+- `[D]` 不引入 `LocalStrategy`——`username + password` 校验在 `auth.service.ts` 内手写(派生项目如要多策略,新增 strategy 放 `strategies/`,**不必**为已有 `username + password` 路径引入 LocalStrategy)
+- `[A]` **永久铁律**:不创建 `*.entity.ts`——本项目不是 TypeORM 项目
+- `[A]` **永久铁律**:不使用 Prisma 全局软删除中间件 / client extension
+- `[D]` 不主动加用户状态缓存"优化"(未触发 `ARCHITECTURE.md` §9 升级条件前不加,触发后按 §9 + 写 ADR,见矩阵 B-10)
+- `[B]` 不预先做 storage Provider——`common/storage/` 只放 interface 与 types,**不需要 `.module.ts`**(派生项目按 ADR 解锁,见矩阵 B-3)
+
+**完整 A 类永久铁律清单见** [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) **§A,共 27 条**(密码处理 / 响应格式 / pnpm-only / SUPER_ADMIN 保护 / migration 不改写 / 唯一性预检查 / DTO 白名单 等)。
+
+**C 类派生项目正常业务**(无需 ADR,守 A 类铁律即可):新增业务模块、新增业务 Prisma model、`User` 加普通业务字段、新增业务 DTO / Service / Controller、新增业务 BizCode、新增 E2E / contract 测试、新增业务专属 docs。详见 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) §C。
 
 ---
 

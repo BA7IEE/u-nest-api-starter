@@ -188,20 +188,55 @@ src/modules/<name>/
 
 新 BizCode 按模块段位分配(`110xx` 起每模块 200 个号段),新数据表走新 Prisma migration 增量演进。
 
-### 二、派生项目**绝不要碰**的文件
+### 二、派生项目改动分级
 
-**派生即引用** — 以下文件是模板的"宪法",修改即偏离规范、失去 AI 协作的边界保证:
+派生即引用,但**不等于全仓库冻结**。模板内容分三档管理:**永久禁止改写 / 默认不改 ADR 解锁 / 可正常扩展**。
 
-| 类别 | 路径 | 为什么不能碰 |
-|---|---|---|
-| 三件套铁律 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) / [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md) | 所有规则的唯一来源,AI 协作时优先于代码 |
-| 全局基础件 | `src/common/**` | 拦截器 / 异常过滤器 / 装饰器 / Pipe / Guard / `BizCode` 编码段 |
-| 登录参考实现 | `src/modules/auth/**` | 登录手写实现、timing 防御、防账号枚举的参考样本 |
-| 用户参考实现 | `src/modules/users/**` | 软删除、`assertCanManageUser`、最后一个 SUPER_ADMIN 保护的参考样本 |
-| 健康检查 | `src/modules/health/**` | `@nestjs/terminus` + `BizCode.INTERNAL_ERROR` 的 ready 失败映射 |
-| Migration 历史 | `prisma/migrations/**` | 已应用的 migration 不可改写;新业务表必须通过新 migration 增量演进 |
+> 派生项目的演进治理细则见 [`docs/derived-project-governance.md`](./docs/derived-project-governance.md) 与 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md)。
 
-如果派生过程中发现这些文件**确实**需要改(而非"想改"),停下来评估:多半是规范本身需要演进,应该作为反哺改动回流模板,而不是在派生项目里 fork 出独立分叉。
+#### 第 1 档 — 永久禁止改写(无任何条件可解锁)
+
+| 路径 | 为什么不能改 |
+|---|---|
+| `prisma/migrations/<已应用>/**` | 已应用的 migration 不可改写,只能通过**新增 migration** 增量演进 |
+| 模板已分配的 BizCode 数字(如 `LOGIN_FAILED=10004`、`USER_NOT_FOUND=10001`) | 派生项目按段位**追加**新 BizCode,但**不重新分配**已有数字(前端 SDK 在用) |
+| A 类永久铁律(见 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) §A 的 27 条清单) | 安全底线 + 契约稳定 + 工程一致性,任何 ADR 都不能削弱 |
+
+#### 第 2 档 — 默认不改,ADR 解锁后才动
+
+| 路径 | 改动条件 |
+|---|---|
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) / [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md) 继承段落 | 派生项目**默认不删改**,优先在文档底部追加"派生项目专属规则";确需修改继承段落必须先有 ADR(详见 [`docs/derived-project-governance.md`](./docs/derived-project-governance.md) §7);**A 类永久铁律无论如何不得削弱** |
+| `src/common/**` | 拦截器 / 异常过滤器 / 装饰器 / Pipe / Guard / `BizCode` 编码段;扩展前先 ADR 说明对全局的影响 |
+| `src/modules/auth/**` | **可扩展(新增登录策略、扩 JWT payload),但必须保留**:防账号枚举四场景一致 + Timing 防御 + `JwtPayload` 最小化 + 全局 `APP_GUARD` 注册;新增策略放在 `strategies/` 子目录(如 `wechat-mini.strategy.ts`),不破坏现有 `username + password` 路径;涉及 B-7 / B-9 时走对应 ADR |
+| `src/modules/users/**` | **可扩展(扩 `User` 字段、加管理接口),但必须保留**:`userSafeSelect` 不漏 `passwordHash` + 软删除走 `notDeletedWhere()` + 自我保护 + 最后一个 SUPER_ADMIN 保护 + `assertCanManageUser` 双层校验;`User` 加字段时同步更新 `userSafeSelect` / `UserResponseDto` / 入参 DTO 白名单;涉及 RBAC / 改密码 / token 吊销时走对应 B 类 ADR |
+| `src/modules/health/**` | 健康检查可加新 indicator(如 Redis 健康检查),但不破坏 `/api/health` 向后兼容契约;走统一响应包装 |
+
+> 第 2 档的"必须保留"项是 A 类永久铁律,**任何 ADR 都不能放开**,见 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md) §A。
+
+#### 第 3 档 — 可正常扩展(无需 ADR,守 A 类铁律即可)
+
+- 新增业务模块:`src/modules/orgs/` / `src/modules/missions/` / `src/modules/devices/` / `src/modules/files/` ……
+- 新增业务 Prisma model 与 migration(`prisma migrate dev` 走标准流程)
+- `User` 加普通业务字段(`phone` / `realName` / `birthday` / `orgId` 等,**不涉及权限模型变化**)
+- 新增业务 BizCode(按段位 `110xx`+ 平铺,每模块 200 个号段)
+- 新增业务 DTO / Controller / Service
+- 新增 E2E / contract / unit 测试
+- 新增业务专属 docs(`docs/<biz>.md` / `docs/playbook-<biz>.md` / `docs/adr/NNN-<topic>.md`)
+- `package.json` 名称 / 描述 / 版本号、Swagger 元数据、`docker-compose.yml` 容器名与数据库名(参考第一节"派生步骤")
+- `CHANGELOG.md` 重写为派生项目自己的版本历史
+
+#### AI 在派生项目里的判断流程
+
+AI 在派生项目里**不能**因为旧文档写了"不做"就拒绝业务开发,**也不能**直接绕过文档硬上代码。标准流程:
+
+1. 查 [`docs/capability-unlock-matrix.md`](./docs/capability-unlock-matrix.md),判断需求触碰哪一类(A / B / C / D)
+2. **A 类(永久铁律)** → 拒绝,引导用户寻找不破坏铁律的替代方案
+3. **B 类(默认禁止)** → 检查 `docs/adr/` 是否已有相关 ADR;无 → 暂停先写 ADR
+4. **C 类(派生项目正常业务)** → 直接实施,守 A 类铁律,更新测试与契约
+5. **D 类(表述过死)** → 按矩阵 §D 对照表的"派生项目如何读"行动
+
+详细决策流程见 [`docs/derived-project-governance.md`](./docs/derived-project-governance.md) §4。
 
 ### 三、何时反哺回模板?
 
