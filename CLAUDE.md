@@ -46,6 +46,7 @@
 
 ## 0. 修改代码前必读
 
+- AI 新会话可先扫 [`docs/ai-entrypoint.md`](./docs/ai-entrypoint.md),用于判断当前仓库类型与本次任务应读文档;它只是导航页,**不是新的规则来源**
 - 必读三件套:`ARCHITECTURE.md` / `CLAUDE.md` / `AGENTS.md`
 - 任何不在 v1 范围内的新增功能(见 §1),**必须先暂停并说明原因,不得擅自实现**
 - 执行 `prisma migrate dev` 前必须先说明将生成 / 执行的迁移内容并等待确认;生产环境只允许 `prisma migrate deploy` 已审查 migration

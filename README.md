@@ -15,6 +15,7 @@
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | v1 蓝图,数据模型 / 接口清单 / 命名铁律 / 升级路径,**所有规则的唯一来源** |
 | [`CLAUDE.md`](./CLAUDE.md) | Claude Code 协作铁律(从 ARCHITECTURE.md §7 抽取) |
 | [`AGENTS.md`](./AGENTS.md) | 通用 AI Agent 协作铁律(与 CLAUDE.md 内容同步) |
+| [`docs/ai-entrypoint.md`](./docs/ai-entrypoint.md) | AI 新会话入口速查:判断当前仓库类型、选择应读文档、快速进入 A/B/C/D 决策 |
 | [`docs/development.md`](./docs/development.md) | 项目结构 / 路由总览 / 环境变量 / 排错 |
 | [`docs/testing.md`](./docs/testing.md) | E2E 测试运行与覆盖范围 |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 镜像、生产部署、迁移流程 |
