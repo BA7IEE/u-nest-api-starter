@@ -59,7 +59,7 @@ req.body.refreshToken
   - **仅 `SUPER_ADMIN` 可用**(`@Roles(Role.SUPER_ADMIN)`)
   - 入参为空,出参与其他用户接口一致(`UserResponseDto`)
   - 同样要在事务里检查 `username` / `email` 是否被新用户占用,若占用则要求先重命名旧记录或拒绝恢复
-  - **本节属于升级路径,AI 不得在 V1.2 范围内实现**
+  - **本节属于升级路径,AI 不得擅自实现**;需在 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §9 升级条件触发后,按 [`derived-project-governance.md`](./derived-project-governance.md) §4-§5 ADR 流程或用户明确立项,方可实施
 
 ---
 
@@ -74,6 +74,6 @@ req.body.refreshToken
 3. **JwtStrategy.validate()**:除现有 `deletedAt === null && status === ACTIVE` 校验外,追加 `payload.tv === user.tokenVersion`,不一致抛 `UNAUTHORIZED`
 4. **吊销触发点**:重置密码、禁用用户、显式"踢下线"等场景,在写库事务内 `tokenVersion: { increment: 1 }`
 5. **不引入 Redis**:每请求多读一个字段,与现有 `JwtStrategy` 单次查库合并,无新增 IO
-6. **升级条件**:见 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §9。**AI 不得在 V1.2 范围内实现**,需用户明确确认升级后单独立项
+6. **升级条件**:见 [`ARCHITECTURE.md`](../ARCHITECTURE.md) §9。**AI 不得擅自实现**;需用户明确确认升级条件触发,按 [`derived-project-governance.md`](./derived-project-governance.md) §4-§5 ADR 流程立项(对应 [`capability-unlock-matrix.md`](./capability-unlock-matrix.md) B-7)后再施工
 
 为什么不直接做:JWT 简单可用、`status=DISABLED` 已能覆盖"封禁账号"主路径,refresh token + tokenVersion 增加状态管理复杂度,与 v1 "简单、显式、强约束" 的设计目标冲突。

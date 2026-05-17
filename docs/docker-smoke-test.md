@@ -206,7 +206,7 @@ job 步骤:
 
 ### CI 化时**不要**做的事
 
-- 不要在 CI 里跑 Prisma 7 试验镜像(那是独立任务,见 docs/v1.4-prisma7-evaluation.md)
+- 不要在 CI 里跑 Prisma 7 试验镜像(那是独立任务,历史评估见 [`release-tasks/v1.4-prisma7-evaluation.md`](./release-tasks/v1.4-prisma7-evaluation.md))
 - 不要在镜像 ENTRYPOINT 里加 `prisma migrate deploy`(会破坏 Dockerfile 文末"生产迁移原则")
 - 不要把 smoke job 设成必过 required check —— 第一周观察稳定后再升级
 

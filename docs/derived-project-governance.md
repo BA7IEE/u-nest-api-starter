@@ -127,7 +127,7 @@ A 类规则**派生项目不能放开**,任何 ADR **都不能削弱 A 类铁律
 | "派生项目**绝不要碰** `src/modules/users/**`" | "可扩展,但必须保留:`userSafeSelect` / 软删除 / 自我保护 / 最后一个 SUPER_ADMIN 保护 / `assertCanManageUser` 双层校验" |
 | "v1 不提供恢复接口" | "派生项目按 [`docs/security.md`](./security.md) §软删除策略 给出的接口契约实施即可" |
 | "不主动加用户状态缓存优化" | "未触发 `ARCHITECTURE.md` §9 升级条件前不加;触发后按 §9 + 写 ADR" |
-| `CLAUDE.md` §17 / `AGENTS.md` §17 / `ARCHITECTURE.md` §11 的 V1.1 不修改清单 | "**仅适用模板 V1.1 加固阶段**(已收尾,见 `TASKS.md`)。派生项目无需遵守" |
+| `CLAUDE.md` §17 / `AGENTS.md` §17 / `ARCHITECTURE.md` §11 的 V1.1 不修改清单 | "**仅适用模板 V1.1 加固阶段**(已收尾,历史任务清单见 [`release-tasks/v1.1-engineering-hardening.md`](./release-tasks/v1.1-engineering-hardening.md))。派生项目无需遵守" |
 
 ---
 
